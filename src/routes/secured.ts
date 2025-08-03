@@ -12,6 +12,7 @@ import Router from 'express-promise-router';
 import { User, Post, Friend } from '../orm';
 import { allowRoles } from '../middleware/auth';
 import { validatePasswordStrength, getPasswordRequirements } from '../utils/passwordSecurity';
+import { ReauthenticationService } from '../services/reauthenticationService';
 
 // Standardized authentication error message to prevent information disclosure
 // const AUTH_ERROR_MESSAGE = 'Invalid username and/or password';
@@ -106,36 +107,209 @@ route.get('/change-password', (req, res) => {
         return res.redirect(303, '/');
     }
     const passwordRequirements = getPasswordRequirements();
-    res.render('change_password', { view: 'change_password', messages: [], passwordRequirements, user: req.session.user });
+    const reauthTimeout = ReauthenticationService.getReauthTimeout();
+    res.render('change_password', { 
+        view: 'change_password', 
+        messages: [], 
+        passwordRequirements, 
+        user: req.session.user,
+        reauthTimeout 
+    });
 });
 
-// Handle change password submission
+// Handle re-authentication for password change
+route.post('/reauth-password-change', async (req, res) => {
+    if (!req.session.user) {
+        return res.redirect(303, '/');
+    }
+
+    const { currentPassword } = req.body;
+    const username = req.session.user.username;
+    const messages = [];
+    const passwordRequirements = getPasswordRequirements();
+    const reauthTimeout = ReauthenticationService.getReauthTimeout();
+
+    try {
+        // Verify current password for re-authentication
+        const reauthResult = await ReauthenticationService.verifyCurrentPassword(username, currentPassword);
+        
+        if (!reauthResult.isValid) {
+            messages.push(reauthResult.error || 'Current password is incorrect.');
+            return res.render('change_password', { 
+                view: 'change_password', 
+                messages, 
+                passwordRequirements, 
+                user: req.session.user,
+                reauthTimeout,
+                step: 'reauth'
+            });
+        }
+
+        // Create re-authentication token
+        if (!reauthResult.userId) {
+            messages.push('Authentication failed. Please try again.');
+            return res.render('change_password', { 
+                view: 'change_password', 
+                messages, 
+                passwordRequirements, 
+                user: req.session.user,
+                reauthTimeout,
+                step: 'reauth'
+            });
+        }
+
+        const tokenResult = await ReauthenticationService.createReauthToken(
+            reauthResult.userId, 
+            'password_change'
+        );
+
+        if (!tokenResult.success) {
+            messages.push('Authentication failed. Please try again.');
+            return res.render('change_password', { 
+                view: 'change_password', 
+                messages, 
+                passwordRequirements, 
+                user: req.session.user,
+                reauthTimeout,
+                step: 'reauth'
+            });
+        }
+
+        // Proceed to password change form with token
+        res.render('change_password', { 
+            view: 'change_password', 
+            messages: ['Authentication successful. You can now change your password.'], 
+            passwordRequirements, 
+            user: req.session.user,
+            reauthTimeout,
+            reauthToken: tokenResult.token,
+            step: 'change'
+        });
+
+    } catch (error) {
+        console.error('Re-authentication error:', error);
+        messages.push('Authentication failed. Please try again.');
+        res.render('change_password', { 
+            view: 'change_password', 
+            messages, 
+            passwordRequirements, 
+            user: req.session.user,
+            reauthTimeout,
+            step: 'reauth'
+        });
+    }
+});
+
+// Handle change password submission (requires re-authentication token)
 route.post('/change-password', async (req, res) => {
     if (!req.session.user) {
         return res.redirect(303, '/');
     }
-    const { oldPassword, newPassword } = req.body;
+
+    const { newPassword, reauthToken } = req.body;
     const username = req.session.user.username;
-    const user = await User.byLogin(username, oldPassword);
     const messages = [];
     const passwordRequirements = getPasswordRequirements();
+    const reauthTimeout = ReauthenticationService.getReauthTimeout();
     
-    if (!user) {
-        // Use standardized error message to prevent information disclosure
-        messages.push('Invalid old password.');
-    } else if (!newPassword || newPassword.length === 0) {
-        messages.push('New password cannot be empty.');
-    } else {
-        // Comprehensive password validation
-        const passwordValidation = validatePasswordStrength(newPassword);
-        if (!passwordValidation.isValid) {
-            messages.push(...passwordValidation.errors);
-        } else {
-            await user.changePassword(newPassword);
-            messages.push('Password changed successfully.');
+    try {
+        // Find the user
+        const user = await User.byUsername(username);
+        if (!user || !user.id) {
+            messages.push('User not found.');
+            return res.render('change_password', { 
+                view: 'change_password', 
+                messages, 
+                passwordRequirements, 
+                user: req.session.user,
+                reauthTimeout,
+                step: 'reauth'
+            });
         }
+
+        // Verify re-authentication token
+        if (!reauthToken) {
+            messages.push('Authentication required. Please re-enter your current password.');
+            return res.render('change_password', { 
+                view: 'change_password', 
+                messages, 
+                passwordRequirements, 
+                user: req.session.user,
+                reauthTimeout,
+                step: 'reauth'
+            });
+        }
+
+        const tokenVerification = await ReauthenticationService.verifyAndConsumeReauthToken(
+            user.id, 
+            reauthToken, 
+            'password_change'
+        );
+
+        if (!tokenVerification.isValid) {
+            messages.push(tokenVerification.error || 'Authentication expired. Please re-authenticate.');
+            return res.render('change_password', { 
+                view: 'change_password', 
+                messages, 
+                passwordRequirements, 
+                user: req.session.user,
+                reauthTimeout,
+                step: 'reauth'
+            });
+        }
+
+        // Validate new password
+        if (!newPassword || newPassword.length === 0) {
+            messages.push('New password cannot be empty.');
+        } else {
+            // Comprehensive password validation
+            const passwordValidation = validatePasswordStrength(newPassword);
+            if (!passwordValidation.isValid) {
+                messages.push(...passwordValidation.errors);
+            } else {
+                // Attempt to change password (includes age and history checks)
+                try {
+                    await user.changePassword(newPassword);
+                    messages.push('Password changed successfully.');
+                    
+                    // Redirect to prevent form resubmission
+                    return res.render('change_password', { 
+                        view: 'change_password', 
+                        messages, 
+                        passwordRequirements, 
+                        user: req.session.user,
+                        reauthTimeout,
+                        step: 'success'
+                    });
+                } catch (changeError) {
+                    // Handle password change errors (age restriction, reuse, etc.)
+                    messages.push(changeError instanceof Error ? changeError.message : 'Failed to change password.');
+                }
+            }
+        }
+
+        // Return to re-authentication step on error
+        res.render('change_password', { 
+            view: 'change_password', 
+            messages, 
+            passwordRequirements, 
+            user: req.session.user,
+            reauthTimeout,
+            step: 'reauth'
+        });
+
+    } catch (error) {
+        console.error('Password change error:', error);
+        messages.push('An error occurred while changing your password. Please try again.');
+        res.render('change_password', { 
+            view: 'change_password', 
+            messages, 
+            passwordRequirements, 
+            user: req.session.user,
+            reauthTimeout,
+            step: 'reauth'
+        });
     }
-    res.render('change_password', { view: 'change_password', messages, passwordRequirements, user: req.session.user });
 });
 
 // Delete a post by ID (moderator/admin only)

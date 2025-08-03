@@ -65,6 +65,44 @@ class PasswordHistory {
         });
     }
     /**
+     * Check if the user's current password is old enough to be changed
+     * Passwords must be at least one day old before they can be changed
+     */
+    static isPasswordOldEnoughToChange(userId, minimumAgeHours = 24) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                // Get the most recent password (current password)
+                const recentHistory = yield this.getHistoryByUserId(userId, 1);
+                if (recentHistory.length === 0) {
+                    // No password history found, allow change (shouldn't happen in normal flow)
+                    return { canChange: true };
+                }
+                const currentPasswordCreated = recentHistory[0].createdAt;
+                const now = new Date();
+                const ageInMilliseconds = now.getTime() - currentPasswordCreated.getTime();
+                const ageInHours = ageInMilliseconds / (1000 * 60 * 60);
+                if (ageInHours >= minimumAgeHours) {
+                    return { canChange: true };
+                }
+                else {
+                    const hoursRemaining = Math.ceil(minimumAgeHours - ageInHours);
+                    return {
+                        canChange: false,
+                        error: `Password must be at least ${minimumAgeHours} hours old before it can be changed. Please wait ${hoursRemaining} more hour(s).`,
+                        hoursRemaining
+                    };
+                }
+            }
+            catch (error) {
+                console.error('Error checking password age:', error);
+                return {
+                    canChange: false,
+                    error: 'Unable to verify password age'
+                };
+            }
+        });
+    }
+    /**
      * Clean up old password history records beyond the limit
      */
     static cleanupOldHistory(userId, keepCount = 5) {

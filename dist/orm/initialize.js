@@ -8,6 +8,25 @@
  *
  * It is designed for educational purposes - to teach common vulnerabilities in web applications.
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -29,6 +48,7 @@ const passwordHistory_1 = __importDefault(require("./passwordHistory"));
 const accountLockoutService_1 = require("../services/accountLockoutService");
 const passwordResetService_1 = require("../services/passwordResetService");
 const userManagementLog_1 = __importDefault(require("./userManagementLog"));
+const reauthenticationService_1 = require("../services/reauthenticationService");
 // Initialize the database with a schema and sample data
 // Run once on system startup
 function initialize() {
@@ -63,6 +83,7 @@ function initialize() {
         yield passwordResetService_1.PasswordResetService.initializeTables();
         yield passwordHistory_1.default.initializeTable();
         yield userManagementLog_1.default.initializeTable();
+        yield reauthenticationService_1.ReauthenticationService.initializeReauthTable();
         // Populate the database with sample data using secure password hashing
         const max = yield user_1.default.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
         const malcolm = yield user_1.default.createUser('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');
@@ -76,6 +97,33 @@ function initialize() {
         const marcia = yield user_1.default.createUser('marcia', 'davyjones', 'Marcia', 'normie');
         const jan = yield user_1.default.createUser('jan', 'glass', 'Jan', 'normie');
         const cindy = yield user_1.default.createUser('cindy', 'thindy', 'Cindy', 'normie');
+        // Setup Carol's account for testing time-gated security features
+        // Backdate her password history to make it immediately changeable
+        if (carol.id) {
+            console.log('Setting up Carol as a test account for password security features...');
+            // Update Carol's password history to be 25 hours old (older than 24-hour minimum)
+            const backdatedTime = new Date(Date.now() - (25 * 60 * 60 * 1000)); // 25 hours ago
+            yield alasql_1.default.promise(`
+            UPDATE password_history 
+            SET created_at = ? 
+            WHERE user_id = ?
+        `, [backdatedTime.toISOString(), carol.id]);
+            // Add some additional historical passwords for testing password reuse prevention
+            // These will be older passwords that Carol "used" in the past
+            const historicalPasswords = ['oldpassword1', 'oldpassword2', 'temppass123', 'password123'];
+            for (let i = 0; i < historicalPasswords.length; i++) {
+                const { hashPassword } = yield Promise.resolve().then(() => __importStar(require('../utils/passwordSecurity')));
+                const hashedPassword = yield hashPassword(historicalPasswords[i]);
+                const historyDate = new Date(Date.now() - ((26 + i) * 60 * 60 * 1000)); // 26+ hours ago
+                const historyRecord = new passwordHistory_1.default(carol.id, hashedPassword, historyDate);
+                yield historyRecord.create();
+            }
+            console.log('Carol\'s account setup complete:');
+            console.log('- Password history backdated to allow immediate changes');
+            console.log('- Historical passwords added for reuse testing');
+            console.log('- Login: carol / password');
+            console.log('- Cannot reuse: oldpassword1, oldpassword2, temppass123, password123, password');
+        }
         // Users are already created with secure password hashes
         // No need to call create() again as createUser() handles it
         yield new friend_1.default(marcia, carol).create();

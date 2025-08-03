@@ -94,12 +94,20 @@ class PasswordHistoryService {
         });
     }
     /**
-     * Validate and change password with history checking
+     * Validate and change password with history checking and age restrictions
      */
     static changePasswordWithHistory(userId, newPassword, updateUserCallback) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                // Check password history first
+                // Check if current password is old enough to be changed
+                const ageCheck = yield passwordHistory_1.default.isPasswordOldEnoughToChange(userId);
+                if (!ageCheck.canChange) {
+                    return {
+                        success: false,
+                        error: ageCheck.error
+                    };
+                }
+                // Check password history for reuse
                 const historyCheck = yield this.checkPasswordHistory(userId, newPassword);
                 if (!historyCheck.isValid) {
                     return {

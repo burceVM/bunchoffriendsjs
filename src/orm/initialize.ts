@@ -16,6 +16,7 @@ import PasswordHistory from './passwordHistory';
 import { AccountLockoutService } from '../services/accountLockoutService';
 import { PasswordResetService } from '../services/passwordResetService';
 import UserManagementLog from './userManagementLog';
+import { ReauthenticationService } from '../services/reauthenticationService';
 
 // Initialize the database with a schema and sample data
 // Run once on system startup
@@ -53,6 +54,7 @@ export default async function initialize(): Promise<void> {
     await PasswordResetService.initializeTables();
     await PasswordHistory.initializeTable();
     await UserManagementLog.initializeTable();
+    await ReauthenticationService.initializeReauthTable();
 
     // Populate the database with sample data using secure password hashing
     const max = await User.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
@@ -69,6 +71,44 @@ export default async function initialize(): Promise<void> {
     const marcia = await User.createUser('marcia', 'davyjones', 'Marcia', 'normie');
     const jan = await User.createUser('jan', 'glass', 'Jan', 'normie');
     const cindy = await User.createUser('cindy', 'thindy', 'Cindy', 'normie');
+    
+    // Setup Carol's account for testing time-gated security features
+    // Backdate her password history to make it immediately changeable
+    if (carol.id) {
+        console.log('Setting up Carol as a test account for password security features...');
+        
+        // Update Carol's password history to be 25 hours old (older than 24-hour minimum)
+        const backdatedTime = new Date(Date.now() - (25 * 60 * 60 * 1000)); // 25 hours ago
+        
+        await alasql.promise(`
+            UPDATE password_history 
+            SET created_at = ? 
+            WHERE user_id = ?
+        `, [backdatedTime.toISOString(), carol.id]);
+        
+        // Add some additional historical passwords for testing password reuse prevention
+        // These will be older passwords that Carol "used" in the past
+        const historicalPasswords = ['oldpassword1', 'oldpassword2', 'temppass123', 'password123'];
+        
+        for (let i = 0; i < historicalPasswords.length; i++) {
+            const { hashPassword } = await import('../utils/passwordSecurity');
+            const hashedPassword = await hashPassword(historicalPasswords[i]);
+            const historyDate = new Date(Date.now() - ((26 + i) * 60 * 60 * 1000)); // 26+ hours ago
+            
+            const historyRecord = new PasswordHistory(
+                carol.id,
+                hashedPassword,
+                historyDate
+            );
+            await historyRecord.create();
+        }
+        
+        console.log('Carol\'s account setup complete:');
+        console.log('- Password history backdated to allow immediate changes');
+        console.log('- Historical passwords added for reuse testing');
+        console.log('- Login: carol / password');
+        console.log('- Cannot reuse: oldpassword1, oldpassword2, temppass123, password123, password');
+    }
     
     // Users are already created with secure password hashes
     // No need to call create() again as createUser() handles it

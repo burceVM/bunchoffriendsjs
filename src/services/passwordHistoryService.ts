@@ -106,7 +106,7 @@ export class PasswordHistoryService {
     }
 
     /**
-     * Validate and change password with history checking
+     * Validate and change password with history checking and age restrictions
      */
     static async changePasswordWithHistory(
         userId: number,
@@ -117,7 +117,16 @@ export class PasswordHistoryService {
         error?: string;
     }> {
         try {
-            // Check password history first
+            // Check if current password is old enough to be changed
+            const ageCheck = await PasswordHistory.isPasswordOldEnoughToChange(userId);
+            if (!ageCheck.canChange) {
+                return {
+                    success: false,
+                    error: ageCheck.error
+                };
+            }
+
+            // Check password history for reuse
             const historyCheck = await this.checkPasswordHistory(userId, newPassword);
             if (!historyCheck.isValid) {
                 return {
