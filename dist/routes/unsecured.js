@@ -63,7 +63,7 @@ route.get('/posts_friend', (req, res) => __awaiter(void 0, void 0, void 0, funct
                 }
             }
         }
-        res.render('posts_friend', { view: 'posts_friend', friend, posts });
+        res.render('posts_friend', { view: 'posts_friend', friend, posts, user: req.session.user });
     }
     catch (error) {
         // Fail securely: any error results in empty response
@@ -232,7 +232,7 @@ route.post('/admin', auth_1.allowRoles('admin'), (req, res) => __awaiter(void 0,
                 errors = 'Query execution failed. Check logs for details.';
             }
         }
-        res.render('admin', { view: 'admin', query, rows, errors });
+        res.render('admin', { view: 'admin', query, rows, errors, user: req.session.user });
     }
     catch (error) {
         // Fail securely: any unexpected error results in access denial

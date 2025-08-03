@@ -58,7 +58,7 @@ route.get('/posts_friend', async (req, res) => {
             }
         }
         
-        res.render('posts_friend', { view: 'posts_friend', friend, posts});
+        res.render('posts_friend', { view: 'posts_friend', friend, posts, user: req.session.user });
     } catch (error) {
         // Fail securely: any error results in empty response
         console.error('Error in posts_friend route:', error);
@@ -244,7 +244,7 @@ route.post('/admin', allowRoles('admin'), async (req, res) => {
             }
         }
         
-        res.render('admin', { view: 'admin', query, rows, errors });
+        res.render('admin', { view: 'admin', query, rows, errors, user: req.session.user });
     } catch (error) {
         // Fail securely: any unexpected error results in access denial
         console.error('Admin route error:', error);
