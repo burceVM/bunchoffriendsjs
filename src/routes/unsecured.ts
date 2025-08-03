@@ -14,6 +14,7 @@ import { requireAuth, allowRoles } from '../middleware/auth';
 import { AccountLockoutService } from '../services/accountLockoutService';
 import UserManagementLog from '../orm/userManagementLog';
 import AccessDenialLog from '../orm/accessDenialLog';
+import ValidationFailureLog from '../orm/validationFailureLog';
 const route = Router();
 
 //--------------------------------------------------------
@@ -304,6 +305,40 @@ route.get('/admin/access-denial-logs', allowRoles('admin'), async (_, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve access denial logs'
+        });
+    }
+});
+
+route.get('/admin/validation-failure-logs', allowRoles('admin'), async (_, res) => {
+    try {
+        const logs = await ValidationFailureLog.getRecent(100);
+        res.json({
+            success: true,
+            logs
+        });
+    } catch (error) {
+        console.error('Error retrieving validation failure logs:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve validation failure logs',
+            details: error instanceof Error ? error.message : String(error)
+        });
+    }
+});
+
+route.get('/admin/validation-failure-stats', allowRoles('admin'), async (_, res) => {
+    try {
+        const stats = await ValidationFailureLog.getStatistics();
+        res.json({
+            success: true,
+            stats
+        });
+    } catch (error) {
+        console.error('Error retrieving validation failure statistics:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve validation failure statistics',
+            details: error instanceof Error ? error.message : String(error)
         });
     }
 });

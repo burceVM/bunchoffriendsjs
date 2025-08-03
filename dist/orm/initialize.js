@@ -51,6 +51,7 @@ const userManagementLog_1 = __importDefault(require("./userManagementLog"));
 const reauthenticationService_1 = require("../services/reauthenticationService");
 const loginTrackingService_1 = require("../services/loginTrackingService");
 const accessDenialLog_1 = __importDefault(require("./accessDenialLog"));
+const validationFailureLog_1 = __importDefault(require("./validationFailureLog"));
 // Initialize the database with a schema and sample data
 // Run once on system startup
 function initialize() {
@@ -88,6 +89,27 @@ function initialize() {
         yield reauthenticationService_1.ReauthenticationService.initializeReauthTable();
         yield loginTrackingService_1.LoginTrackingService.initializeTable();
         yield accessDenialLog_1.default.initializeTable();
+        yield validationFailureLog_1.default.initializeTable();
+        // Add a test validation failure log entry for testing
+        console.log('Adding test validation failure log entry...');
+        try {
+            const testLog = new (yield Promise.resolve().then(() => __importStar(require('./validationFailureLog')))).default(null, // id
+            null, // userId
+            'test_user', // username
+            'username', // fieldName
+            'invalid@input', // fieldValue
+            'format', // validationType
+            'Invalid character in username', // errorMessage
+            '/login', // endpoint
+            '127.0.0.1', // ipAddress
+            'Test User Agent' // userAgent
+            );
+            yield testLog.create();
+            console.log('Test validation failure log entry created successfully');
+        }
+        catch (error) {
+            console.error('Error creating test validation failure log:', error);
+        }
         // Populate the database with sample data using secure password hashing
         const max = yield user_1.default.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
         const malcolm = yield user_1.default.createUser('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');

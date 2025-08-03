@@ -14,6 +14,7 @@ import { validatePasswordStrength, getPasswordRequirements } from '../utils/pass
 import { AccountLockoutService } from '../services/accountLockoutService';
 import { LoginTrackingService } from '../services/loginTrackingService';
 import { PasswordResetService } from '../services/passwordResetService';
+import { ValidationLogger } from '../services/validationLogger';
 
 // Standardized authentication error message to prevent username enumeration
 const AUTH_ERROR_MESSAGE = 'Invalid username and/or password';
@@ -42,6 +43,8 @@ route.post('/login', async (req, res) => {
 
         // Fail securely: validate input length and format with user-friendly messages
         if (!username || username.length === 0) {
+            // Log validation failure
+            await ValidationLogger.logRequiredFieldFailure(req, 'username', 'Please enter your username.');
             // Record failed attempt even for invalid input to prevent enumeration
             await AccountLockoutService.recordLoginAttempt(username || 'invalid', false, ipAddress);
             res.render('index', { view: 'index', messages: ['Please enter your username.']});
@@ -49,18 +52,24 @@ route.post('/login', async (req, res) => {
         }
         
         if (username.length > 50) {
+            // Log validation failure
+            await ValidationLogger.logLengthValidationFailure(req, 'username', username, 50, 'Username is too long. Please enter a valid username.');
             await AccountLockoutService.recordLoginAttempt(username, false, ipAddress);
             res.render('index', { view: 'index', messages: ['Username is too long. Please enter a valid username.']});
             return;
         }
 
         if (!password || password.length === 0) {
+            // Log validation failure
+            await ValidationLogger.logRequiredFieldFailure(req, 'password', 'Please enter your password.');
             await AccountLockoutService.recordLoginAttempt(username, false, ipAddress);
             res.render('index', { view: 'index', messages: ['Please enter your password.']});
             return;
         }
         
         if (password.length > 200) {
+            // Log validation failure
+            await ValidationLogger.logLengthValidationFailure(req, 'password', '[REDACTED]', 200, 'Password is too long. Please enter a valid password.');
             await AccountLockoutService.recordLoginAttempt(username, false, ipAddress);
             res.render('index', { view: 'index', messages: ['Password is too long. Please enter a valid password.']});
             return;
@@ -210,32 +219,50 @@ route.post('/signup', async (req, res) => {
     const securityQuestions = PasswordResetService.getSecurityQuestions();
 
     // Enhanced input validation with helpful error messages
-    if (username.length == 0)
+    if (username.length == 0) {
+        await ValidationLogger.logRequiredFieldFailure(req, 'username', 'Username cannot be empty');
         messages.push('Username cannot be empty');
-    else if (username.length > 50)
+    } else if (username.length > 50) {
+        await ValidationLogger.logLengthValidationFailure(req, 'username', username, 50, 'Username must be 50 characters or less');
         messages.push('Username must be 50 characters or less');
-    else if (!/^[a-zA-Z0-9._-]+$/.test(username))
+    } else if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
+        await ValidationLogger.logFormatValidationFailure(req, 'username', username, 'alphanumeric_with_dots_underscores_dashes', 'Username can only contain letters, numbers, dots, underscores, and dashes');
         messages.push('Username can only contain letters, numbers, dots, underscores, and dashes');
+    }
         
-    if (password.length == 0)
+    if (password.length == 0) {
+        await ValidationLogger.logRequiredFieldFailure(req, 'password', 'Password cannot be empty');
         messages.push('Password cannot be empty');
+    }
         
-    if (fullName.length == 0)
+    if (fullName.length == 0) {
+        await ValidationLogger.logRequiredFieldFailure(req, 'fullName', 'Full name cannot be empty');
         messages.push('Full name cannot be empty');
-    else if (fullName.length > 100)
+    } else if (fullName.length > 100) {
+        await ValidationLogger.logLengthValidationFailure(req, 'fullName', fullName, 100, 'Full name must be 100 characters or less');
         messages.push('Full name must be 100 characters or less');
+    }
         
-    if (securityQuestionId.length == 0)
+    if (securityQuestionId.length == 0) {
+        await ValidationLogger.logRequiredFieldFailure(req, 'securityQuestionId', 'Please select a security question');
         messages.push('Please select a security question');
+    }
         
-    if (securityAnswer.length == 0)
+    if (securityAnswer.length == 0) {
+        await ValidationLogger.logRequiredFieldFailure(req, 'securityAnswer', 'Security answer cannot be empty');
         messages.push('Security answer cannot be empty');
-    else if (securityAnswer.length > 500)
+    } else if (securityAnswer.length > 500) {
+        await ValidationLogger.logLengthValidationFailure(req, 'securityAnswer', securityAnswer, 500, 'Security answer must be 500 characters or less');
         messages.push('Security answer must be 500 characters or less');
+    }
 
     // Comprehensive password validation
     const passwordValidation = validatePasswordStrength(password);
     if (!passwordValidation.isValid) {
+        // Log each password validation failure
+        for (const error of passwordValidation.errors) {
+            await ValidationLogger.logValidationFailure(req, 'password', '[REDACTED]', 'password_strength', error);
+        }
         messages.push(...passwordValidation.errors);
     }
 
@@ -243,19 +270,26 @@ route.post('/signup', async (req, res) => {
     if (securityQuestionId && securityAnswer) {
         const selectedQuestion = securityQuestions.find(q => q.id === securityQuestionId);
         if (!selectedQuestion) {
+            await ValidationLogger.logValidationFailure(req, 'securityQuestionId', securityQuestionId, 'invalid_selection', 'Invalid security question selected');
             messages.push('Invalid security question selected');
         } else {
             // Validate the security answer directly
             const cleanAnswer = securityAnswer.trim().toUpperCase();
             
             if (cleanAnswer.length < selectedQuestion.minAnswerLength) {
-                messages.push(`Security answer must be at least ${selectedQuestion.minAnswerLength} characters long`);
+                const errorMsg = `Security answer must be at least ${selectedQuestion.minAnswerLength} characters long`;
+                await ValidationLogger.logLengthValidationFailure(req, 'securityAnswer', securityAnswer, selectedQuestion.minAnswerLength, errorMsg);
+                messages.push(errorMsg);
             }
             if (cleanAnswer.length > selectedQuestion.maxAnswerLength) {
-                messages.push(`Security answer must be no more than ${selectedQuestion.maxAnswerLength} characters long`);
+                const errorMsg = `Security answer must be no more than ${selectedQuestion.maxAnswerLength} characters long`;
+                await ValidationLogger.logLengthValidationFailure(req, 'securityAnswer', securityAnswer, selectedQuestion.maxAnswerLength, errorMsg);
+                messages.push(errorMsg);
             }
             if (selectedQuestion.requiresNumeric && !/\d/.test(cleanAnswer)) {
-                messages.push('Security answer must contain at least one number');
+                const errorMsg = 'Security answer must contain at least one number';
+                await ValidationLogger.logFormatValidationFailure(req, 'securityAnswer', securityAnswer, 'numeric_required', errorMsg);
+                messages.push(errorMsg);
             }
         }
     }
@@ -416,10 +450,13 @@ route.post('/forgot-password', async (req, res) => {
     try {
         // Enhanced validation with helpful messages
         if (!username || username.length === 0) {
+            await ValidationLogger.logRequiredFieldFailure(req, 'username', 'Please enter your username');
             messages.push('Please enter your username');
         } else if (username.length > 50) {
+            await ValidationLogger.logLengthValidationFailure(req, 'username', username, 50, 'Username is too long. Please enter a valid username.');
             messages.push('Username is too long. Please enter a valid username.');
         } else if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
+            await ValidationLogger.logFormatValidationFailure(req, 'username', username, 'alphanumeric_with_dots_underscores_dashes', 'Username contains invalid characters. Please use only letters, numbers, dots, underscores, and dashes.');
             messages.push('Username contains invalid characters. Please use only letters, numbers, dots, underscores, and dashes.');
         } else {
             // Find user by username
@@ -516,6 +553,7 @@ route.post('/verify-security-question', async (req, res) => {
     try {
         // Business rule: validate input format and length with helpful messages  
         if (!username || username.length === 0) {
+            await ValidationLogger.logRequiredFieldFailure(req, 'username', 'Please enter your username');
             messages.push('Please enter your username');
             res.render('verify_security_question', {
                 view: 'verify_security_question',
@@ -529,6 +567,7 @@ route.post('/verify-security-question', async (req, res) => {
         }
         
         if (username.length > 50) {
+            await ValidationLogger.logLengthValidationFailure(req, 'username', username, 50, 'Username is too long');
             messages.push('Username is too long');
             res.render('verify_security_question', {
                 view: 'verify_security_question',
@@ -542,12 +581,14 @@ route.post('/verify-security-question', async (req, res) => {
         }
         
         if (!answer || answer.length === 0) {
+            await ValidationLogger.logRequiredFieldFailure(req, 'answer', 'Please provide your security answer');
             messages.push('Please provide your security answer');
             res.redirect(303, '/forgot-password');
             return;
         }
         
         if (answer.length > 500) {
+            await ValidationLogger.logLengthValidationFailure(req, 'answer', answer, 500, 'Security answer is too long');
             messages.push('Security answer is too long');
             res.redirect(303, '/forgot-password');
             return;

@@ -56,42 +56,103 @@ route.use((req, res, next) => {
 // Includes a list of posts by friends
 // If the user is a moderator or admin, show all posts
 route.get('/home', async (req, res) => {
-    let posts;
-    if (req.session.user?.role === 'moderator' || req.session.user?.role === 'admin') {
-        posts = await Post.byWhere('1=1', 'creationDate desc'); // all posts
-    } else {
-        posts = await req.session.user?.findFriendPosts();
+    try {
+        let posts: Post[] = [];
+        if (req.session.user?.role === 'moderator' || req.session.user?.role === 'admin') {
+            posts = await Post.byWhere('1=1', 'creationDate desc'); // all posts
+        } else {
+            // Create a proper User instance to call methods on
+            if (req.session.user && req.session.user.id) {
+                const user = await User.byId(req.session.user.id);
+                if (user) {
+                    posts = await user.findFriendPosts();
+                }
+            }
+        }
+        
+        // Get last login info from session (set during login)
+        const lastLoginInfo = req.session.lastLoginInfo;
+        
+        // Clear the lastLoginInfo from session after displaying it once
+        if (req.session.lastLoginInfo) {
+            req.session.lastLoginInfo = undefined;
+        }
+        
+        res.render('home', { 
+            ...req.session, 
+            view: 'home', 
+            posts, 
+            user: req.session.user,
+            lastLoginInfo 
+        });
+    } catch (error) {
+        console.error('Error in /home route:', error);
+        res.render('error', { 
+            view: 'error', 
+            message: 'An error occurred while loading the home page. Please try again.',
+            user: req.session.user 
+        });
     }
-    
-    // Get last login info from session (set during login)
-    const lastLoginInfo = req.session.lastLoginInfo;
-    
-    // Clear the lastLoginInfo from session after displaying it once
-    if (req.session.lastLoginInfo) {
-        req.session.lastLoginInfo = undefined;
-    }
-    
-    res.render('home', { 
-        ...req.session, 
-        view: 'home', 
-        posts, 
-        user: req.session.user,
-        lastLoginInfo 
-    });
 });
 
 
 // Show a list of current friends and people who are not yet friends
 route.get('/friend_list', async (req, res) => {
-    const friends = await req.session.user?.findFriends();
-    const notFriends = await req.session.user?.findNotFriends();
-    res.render('friend_list', { ...req.session, view: 'friend_list', friends, notFriends, user: req.session.user });
+    try {
+        let friends: User[] = [];
+        let notFriends: User[] = [];
+        
+        if (req.session.user && req.session.user.id) {
+            const user = await User.byId(req.session.user.id);
+            if (user) {
+                friends = await user.findFriends();
+                notFriends = await user.findNotFriends();
+            }
+        }
+        
+        res.render('friend_list', { 
+            ...req.session, 
+            view: 'friend_list', 
+            friends, 
+            notFriends, 
+            user: req.session.user 
+        });
+    } catch (error) {
+        console.error('Error in /friend_list route:', error);
+        res.render('error', { 
+            view: 'error', 
+            message: 'An error occurred while loading the friend list. Please try again.',
+            user: req.session.user 
+        });
+    }
 });
 
 // Show a list of posts by the current user
 route.get('/posts_me', async (req, res) => {
-    const posts = await req.session.user?.findPosts();
-    res.render('posts_me', { ...req.session, view: 'posts_me', posts, user: req.session.user});
+    try {
+        let posts: Post[] = [];
+        
+        if (req.session.user && req.session.user.id) {
+            const user = await User.byId(req.session.user.id);
+            if (user) {
+                posts = await user.findPosts();
+            }
+        }
+        
+        res.render('posts_me', { 
+            ...req.session, 
+            view: 'posts_me', 
+            posts, 
+            user: req.session.user
+        });
+    } catch (error) {
+        console.error('Error in /posts_me route:', error);
+        res.render('error', { 
+            view: 'error', 
+            message: 'An error occurred while loading your posts. Please try again.',
+            user: req.session.user 
+        });
+    }
 });
 
 // Create a new post and redirect back to the back parameter

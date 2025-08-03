@@ -28,6 +28,14 @@
         </div>
     </div>
 
+    <div class="admin-section">
+        <h2>Input Validation Failure Logs</h2>
+        <div id="validation-failure-logs-display">
+            <button onclick="loadValidationFailureLogs()">Load Validation Logs</button>
+        </div>
+        <div id="validation-failure-stats-display" style="margin-top: 20px;"></div>
+    </div>
+
     <!-- Database Query Section -->
     <div class="admin-section">
         <h2>Database Query Interface</h2>
@@ -217,6 +225,52 @@ async function loadAccessDenialLogs() {
     } catch (error) {
         document.getElementById('access-denial-logs-display').innerHTML = 
             `<div class="error">Failed to load logs: ${error.message}</div>`;
+    }
+}
+
+async function loadValidationFailureLogs() {
+    try {
+        const response = await fetch('/admin/validation-failure-logs');
+        const data = await response.json();
+        
+        if (data.success) {
+            const logs = data.logs;
+            const display = document.getElementById('validation-failure-logs-display');
+            display.innerHTML = `
+                <button onclick="loadValidationFailureLogs()">Load Validation Logs</button>
+                <!-- <button onclick="loadValidationFailureStats()" style="margin-left: 10px;">Load Statistics</button> -->
+                <table border="1" style="border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 10px;">
+                    <tr>
+                        <th>Time</th>
+                        <th>User</th>
+                        <th>Field</th>
+                        <th>Value</th>
+                        <th>Validation Type</th>
+                        <th>Error Message</th>
+                        <th>Endpoint</th>
+                        <th>IP</th>
+                    </tr>
+                    ${logs.map(log => `
+                        <tr>
+                            <td>${new Date(log.timestamp).toLocaleString()}</td>
+                            <td>${log.username ? `${log.username} (#${log.userId})` : 'Guest/Unknown'}</td>
+                            <td>${log.fieldName}</td>
+                            <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis;">${log.fieldValue || ''}</td>
+                            <td>${log.validationType}</td>
+                            <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${log.errorMessage}</td>
+                            <td>${log.endpoint}</td>
+                            <td>${log.ipAddress}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
+        } else {
+            document.getElementById('validation-failure-logs-display').innerHTML = 
+                `<div class="error">Error: ${data.error}</div>`;
+        }
+    } catch (error) {
+        document.getElementById('validation-failure-logs-display').innerHTML = 
+            `<div class="error">Failed to load validation failure logs: ${error.message}</div>`;
     }
 }
 

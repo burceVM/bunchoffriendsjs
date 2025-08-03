@@ -27,6 +27,7 @@ const auth_1 = require("../middleware/auth");
 const accountLockoutService_1 = require("../services/accountLockoutService");
 const userManagementLog_1 = __importDefault(require("../orm/userManagementLog"));
 const accessDenialLog_1 = __importDefault(require("../orm/accessDenialLog"));
+const validationFailureLog_1 = __importDefault(require("../orm/validationFailureLog"));
 const route = express_promise_router_1.default();
 //--------------------------------------------------------
 // Routes that require authentication
@@ -292,6 +293,40 @@ route.get('/admin/access-denial-logs', auth_1.allowRoles('admin'), (_, res) => _
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve access denial logs'
+        });
+    }
+}));
+route.get('/admin/validation-failure-logs', auth_1.allowRoles('admin'), (_, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const logs = yield validationFailureLog_1.default.getRecent(100);
+        res.json({
+            success: true,
+            logs
+        });
+    }
+    catch (error) {
+        console.error('Error retrieving validation failure logs:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve validation failure logs',
+            details: error instanceof Error ? error.message : String(error)
+        });
+    }
+}));
+route.get('/admin/validation-failure-stats', auth_1.allowRoles('admin'), (_, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const stats = yield validationFailureLog_1.default.getStatistics();
+        res.json({
+            success: true,
+            stats
+        });
+    }
+    catch (error) {
+        console.error('Error retrieving validation failure statistics:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve validation failure statistics',
+            details: error instanceof Error ? error.message : String(error)
         });
     }
 }));

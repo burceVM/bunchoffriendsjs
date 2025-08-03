@@ -65,34 +65,82 @@ route.use((req, res, next) => {
 // Includes a list of posts by friends
 // If the user is a moderator or admin, show all posts
 route.get('/home', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c;
-    let posts;
-    if (((_a = req.session.user) === null || _a === void 0 ? void 0 : _a.role) === 'moderator' || ((_b = req.session.user) === null || _b === void 0 ? void 0 : _b.role) === 'admin') {
-        posts = yield orm_1.Post.byWhere('1=1', 'creationDate desc'); // all posts
+    var _a, _b;
+    try {
+        let posts = [];
+        if (((_a = req.session.user) === null || _a === void 0 ? void 0 : _a.role) === 'moderator' || ((_b = req.session.user) === null || _b === void 0 ? void 0 : _b.role) === 'admin') {
+            posts = yield orm_1.Post.byWhere('1=1', 'creationDate desc'); // all posts
+        }
+        else {
+            // Create a proper User instance to call methods on
+            if (req.session.user && req.session.user.id) {
+                const user = yield orm_1.User.byId(req.session.user.id);
+                if (user) {
+                    posts = yield user.findFriendPosts();
+                }
+            }
+        }
+        // Get last login info from session (set during login)
+        const lastLoginInfo = req.session.lastLoginInfo;
+        // Clear the lastLoginInfo from session after displaying it once
+        if (req.session.lastLoginInfo) {
+            req.session.lastLoginInfo = undefined;
+        }
+        res.render('home', Object.assign(Object.assign({}, req.session), { view: 'home', posts, user: req.session.user, lastLoginInfo }));
     }
-    else {
-        posts = yield ((_c = req.session.user) === null || _c === void 0 ? void 0 : _c.findFriendPosts());
+    catch (error) {
+        console.error('Error in /home route:', error);
+        res.render('error', {
+            view: 'error',
+            message: 'An error occurred while loading the home page. Please try again.',
+            user: req.session.user
+        });
     }
-    // Get last login info from session (set during login)
-    const lastLoginInfo = req.session.lastLoginInfo;
-    // Clear the lastLoginInfo from session after displaying it once
-    if (req.session.lastLoginInfo) {
-        req.session.lastLoginInfo = undefined;
-    }
-    res.render('home', Object.assign(Object.assign({}, req.session), { view: 'home', posts, user: req.session.user, lastLoginInfo }));
 }));
 // Show a list of current friends and people who are not yet friends
 route.get('/friend_list', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _d, _e;
-    const friends = yield ((_d = req.session.user) === null || _d === void 0 ? void 0 : _d.findFriends());
-    const notFriends = yield ((_e = req.session.user) === null || _e === void 0 ? void 0 : _e.findNotFriends());
-    res.render('friend_list', Object.assign(Object.assign({}, req.session), { view: 'friend_list', friends, notFriends, user: req.session.user }));
+    try {
+        let friends = [];
+        let notFriends = [];
+        if (req.session.user && req.session.user.id) {
+            const user = yield orm_1.User.byId(req.session.user.id);
+            if (user) {
+                friends = yield user.findFriends();
+                notFriends = yield user.findNotFriends();
+            }
+        }
+        res.render('friend_list', Object.assign(Object.assign({}, req.session), { view: 'friend_list', friends,
+            notFriends, user: req.session.user }));
+    }
+    catch (error) {
+        console.error('Error in /friend_list route:', error);
+        res.render('error', {
+            view: 'error',
+            message: 'An error occurred while loading the friend list. Please try again.',
+            user: req.session.user
+        });
+    }
 }));
 // Show a list of posts by the current user
 route.get('/posts_me', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _f;
-    const posts = yield ((_f = req.session.user) === null || _f === void 0 ? void 0 : _f.findPosts());
-    res.render('posts_me', Object.assign(Object.assign({}, req.session), { view: 'posts_me', posts, user: req.session.user }));
+    try {
+        let posts = [];
+        if (req.session.user && req.session.user.id) {
+            const user = yield orm_1.User.byId(req.session.user.id);
+            if (user) {
+                posts = yield user.findPosts();
+            }
+        }
+        res.render('posts_me', Object.assign(Object.assign({}, req.session), { view: 'posts_me', posts, user: req.session.user }));
+    }
+    catch (error) {
+        console.error('Error in /posts_me route:', error);
+        res.render('error', {
+            view: 'error',
+            message: 'An error occurred while loading your posts. Please try again.',
+            user: req.session.user
+        });
+    }
 }));
 // Create a new post and redirect back to the back parameter
 // Note: the back parameter can be used for invalidated redirects

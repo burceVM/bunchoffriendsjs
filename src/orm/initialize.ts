@@ -19,6 +19,7 @@ import UserManagementLog from './userManagementLog';
 import { ReauthenticationService } from '../services/reauthenticationService';
 import { LoginTrackingService } from '../services/loginTrackingService';
 import AccessDenialLog from './accessDenialLog';
+import ValidationFailureLog from './validationFailureLog';
 
 // Initialize the database with a schema and sample data
 // Run once on system startup
@@ -59,6 +60,28 @@ export default async function initialize(): Promise<void> {
     await ReauthenticationService.initializeReauthTable();
     await LoginTrackingService.initializeTable();
     await AccessDenialLog.initializeTable();
+    await ValidationFailureLog.initializeTable();
+
+    // Add a test validation failure log entry for testing
+    console.log('Adding test validation failure log entry...');
+    try {
+        const testLog = new (await import('./validationFailureLog')).default(
+            null, // id
+            null, // userId
+            'test_user', // username
+            'username', // fieldName
+            'invalid@input', // fieldValue
+            'format', // validationType
+            'Invalid character in username', // errorMessage
+            '/login', // endpoint
+            '127.0.0.1', // ipAddress
+            'Test User Agent' // userAgent
+        );
+        await testLog.create();
+        console.log('Test validation failure log entry created successfully');
+    } catch (error) {
+        console.error('Error creating test validation failure log:', error);
+    }
 
     // Populate the database with sample data using secure password hashing
     const max = await User.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
