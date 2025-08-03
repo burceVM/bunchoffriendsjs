@@ -25,10 +25,30 @@ const express_promise_router_1 = __importDefault(require("express-promise-router
 const orm_1 = require("../orm");
 const passwordSecurity_1 = require("../utils/passwordSecurity");
 const accountLockoutService_1 = require("../services/accountLockoutService");
+const loginTrackingService_1 = require("../services/loginTrackingService");
 // Standardized authentication error message to prevent username enumeration
 const AUTH_ERROR_MESSAGE = 'Invalid username and/or password';
 const GENERIC_ERROR_MESSAGE = 'Authentication failed. Please try again.';
 const route = express_promise_router_1.default();
+// DEBUG ROUTE - Remove in production
+route.get('/debug-carol-login', (_req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const lastLoginInfo1 = yield loginTrackingService_1.LoginTrackingService.getLastLoginInfo('carol', true); // exclude current
+        const lastLoginInfo2 = yield loginTrackingService_1.LoginTrackingService.getLastLoginInfo('carol', false); // include current
+        res.json({
+            success: true,
+            lastLoginInfoExcludeCurrent: lastLoginInfo1,
+            lastLoginInfoIncludeCurrent: lastLoginInfo2,
+            message: 'Carol login tracking data'
+        });
+    }
+    catch (error) {
+        res.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+}));
 //--------------------------------------------------------
 // Routes that are accessible by all users / guests
 //--------------------------------------------------------
@@ -84,6 +104,8 @@ route.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* (
         }
         // Attempt authentication
         const user = yield orm_1.User.byLogin(username, password);
+        // Get client information for tracking
+        const userAgent = req.get('User-Agent') || 'unknown';
         // Fail securely: validate user object structure before storing in session
         if (user != null &&
             typeof user === 'object' &&
@@ -94,12 +116,20 @@ route.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* (
             user.username.length > 0) {
             // Successful login - record success and clear any lockout
             yield accountLockoutService_1.AccountLockoutService.recordLoginAttempt(username, true, ipAddress);
+            // Record successful login in tracking system
+            yield loginTrackingService_1.LoginTrackingService.recordLoginAttempt(username, ipAddress, userAgent, true, user.id);
+            // Get last login information for this user
+            const lastLoginInfo = yield loginTrackingService_1.LoginTrackingService.getLastLoginInfo(username, true);
             req.session.user = user;
+            req.session.lastLoginInfo = lastLoginInfo; // Store for display on home page
             res.redirect(303, 'home');
         }
         else {
             // Failed authentication - record failed attempt
             yield accountLockoutService_1.AccountLockoutService.recordLoginAttempt(username, false, ipAddress);
+            // Record failed login in tracking system
+            const userAgent = req.get('User-Agent') || 'unknown';
+            yield loginTrackingService_1.LoginTrackingService.recordLoginAttempt(username, ipAddress, userAgent, false);
             // Check if this failure triggers a lockout
             const newLockoutStatus = yield accountLockoutService_1.AccountLockoutService.getLockoutStatus(username);
             if (newLockoutStatus.isLocked && !lockoutStatus.isLocked) {

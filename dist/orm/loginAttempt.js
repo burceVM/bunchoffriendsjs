@@ -22,11 +22,12 @@ const alasql_1 = __importDefault(require("alasql"));
  * Tracks login attempts for account lockout functionality
  */
 class LoginAttempt {
-    constructor(username, attemptTime, isSuccessful, ipAddress, id) {
+    constructor(username, attemptTime, isSuccessful, ipAddress, userAgent, id) {
         this.username = username;
         this.attemptTime = attemptTime;
         this.isSuccessful = isSuccessful;
         this.ipAddress = ipAddress;
+        this.userAgent = userAgent;
         this.id = id;
     }
     /**
@@ -35,9 +36,9 @@ class LoginAttempt {
     create() {
         return __awaiter(this, void 0, void 0, function* () {
             const result = yield alasql_1.default.promise(`
-            INSERT INTO login_attempts (username, attempt_time, is_successful, ip_address)
-            VALUES (?, ?, ?, ?)
-        `, [this.username, this.attemptTime.toISOString(), this.isSuccessful, this.ipAddress || null]);
+            INSERT INTO login_attempts (username, attempt_time, is_successful, ip_address, user_agent)
+            VALUES (?, ?, ?, ?, ?)
+        `, [this.username, this.attemptTime.toISOString(), this.isSuccessful, this.ipAddress || null, this.userAgent || null]);
             if (result && result.insertId) {
                 this.id = result.insertId;
             }
@@ -55,7 +56,7 @@ class LoginAttempt {
             WHERE username = ? AND attempt_time >= ?
             ORDER BY attempt_time DESC
         `, [username, cutoffTime.toISOString()]);
-            return results.map((row) => new LoginAttempt(row.username, new Date(row.attempt_time), row.is_successful, row.ip_address, row.id));
+            return results.map((row) => new LoginAttempt(row.username, new Date(row.attempt_time), row.is_successful, row.ip_address, row.user_agent, row.id));
         });
     }
     /**
@@ -70,7 +71,7 @@ class LoginAttempt {
             WHERE username = ? AND attempt_time >= ? AND is_successful = ?
             ORDER BY attempt_time DESC
         `, [username, cutoffTime.toISOString(), false]);
-            return results.map((row) => new LoginAttempt(row.username, new Date(row.attempt_time), row.is_successful, row.ip_address, row.id));
+            return results.map((row) => new LoginAttempt(row.username, new Date(row.attempt_time), row.is_successful, row.ip_address, row.user_agent, row.id));
         });
     }
     /**
@@ -98,7 +99,7 @@ class LoginAttempt {
             WHERE attempt_time >= ?
             ORDER BY attempt_time DESC
         `, [cutoffTime.toISOString()]);
-            return results.map((row) => new LoginAttempt(row.username, new Date(row.attempt_time), row.is_successful, row.ip_address, row.id));
+            return results.map((row) => new LoginAttempt(row.username, new Date(row.attempt_time), row.is_successful, row.ip_address, row.user_agent, row.id));
         });
     }
     /**
@@ -112,7 +113,8 @@ class LoginAttempt {
                 username text not null,
                 attempt_time datetime not null,
                 is_successful boolean not null,
-                ip_address text
+                ip_address text,
+                user_agent text
             );
         `);
             // Create index for performance

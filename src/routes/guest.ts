@@ -12,12 +12,32 @@ import Router from 'express-promise-router';
 import { User } from '../orm';
 import { validatePasswordStrength, getPasswordRequirements } from '../utils/passwordSecurity';
 import { AccountLockoutService } from '../services/accountLockoutService';
+import { LoginTrackingService } from '../services/loginTrackingService';
 
 // Standardized authentication error message to prevent username enumeration
 const AUTH_ERROR_MESSAGE = 'Invalid username and/or password';
 const GENERIC_ERROR_MESSAGE = 'Authentication failed. Please try again.';
 
 const route = Router();
+
+// DEBUG ROUTE - Remove in production
+route.get('/debug-carol-login', async (_req, res) => {
+    try {
+        const lastLoginInfo1 = await LoginTrackingService.getLastLoginInfo('carol', true);  // exclude current
+        const lastLoginInfo2 = await LoginTrackingService.getLastLoginInfo('carol', false); // include current
+        res.json({
+            success: true,
+            lastLoginInfoExcludeCurrent: lastLoginInfo1,
+            lastLoginInfoIncludeCurrent: lastLoginInfo2,
+            message: 'Carol login tracking data'
+        });
+    } catch (error) {
+        res.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
 
 //--------------------------------------------------------
 // Routes that are accessible by all users / guests
@@ -83,6 +103,9 @@ route.post('/login', async (req, res) => {
         // Attempt authentication
         const user = await User.byLogin(username, password);
         
+        // Get client information for tracking
+        const userAgent = req.get('User-Agent') || 'unknown';
+        
         // Fail securely: validate user object structure before storing in session
         if (user != null && 
             typeof user === 'object' &&
@@ -95,11 +118,22 @@ route.post('/login', async (req, res) => {
             // Successful login - record success and clear any lockout
             await AccountLockoutService.recordLoginAttempt(username, true, ipAddress);
             
+            // Record successful login in tracking system
+            await LoginTrackingService.recordLoginAttempt(username, ipAddress, userAgent, true, user.id);
+            
+            // Get last login information for this user
+            const lastLoginInfo = await LoginTrackingService.getLastLoginInfo(username, true);
+            
             req.session.user = user;
+            req.session.lastLoginInfo = lastLoginInfo; // Store for display on home page
             res.redirect(303, 'home');
         } else {
             // Failed authentication - record failed attempt
             await AccountLockoutService.recordLoginAttempt(username, false, ipAddress);
+            
+            // Record failed login in tracking system
+            const userAgent = req.get('User-Agent') || 'unknown';
+            await LoginTrackingService.recordLoginAttempt(username, ipAddress, userAgent, false);
             
             // Check if this failure triggers a lockout
             const newLockoutStatus = await AccountLockoutService.getLockoutStatus(username);

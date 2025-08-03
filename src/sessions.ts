@@ -17,7 +17,17 @@ declare global {
     namespace Express {
         export interface Request {
             session: {
-                user?: User
+                user?: User;
+                lastLoginInfo?: {
+                    lastAttempt?: {
+                        wasSuccessful: boolean;
+                        ipAddress: string;
+                        userAgent: string;
+                        attemptTime: Date;
+                        timeAgo: string;
+                    };
+                    recentFailedAttempts: number;
+                };
             };
         }
     }

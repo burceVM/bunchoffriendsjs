@@ -1,6 +1,35 @@
 <%- include('header_user') %>
 <div class="content">
 
+    <!-- Last login information -->
+    <% if (locals.lastLoginInfo && locals.lastLoginInfo.lastAttempt) { %>
+        <div class="login-info" style="background-color: #f0f8ff; border: 1px solid #d0d0d0; padding: 10px; margin-bottom: 15px; border-radius: 5px;">
+            <h3>Account Security Information</h3>
+            <p><strong>Last login attempt:</strong> 
+                <% if (locals.lastLoginInfo.lastAttempt.wasSuccessful) { %>
+                    <span style="color: green;">✓ Successful login</span>
+                <% } else { %>
+                    <span style="color: red;">✗ Failed login attempt</span>
+                <% } %>
+                <%= locals.lastLoginInfo.lastAttempt.timeAgo %>
+            </p>
+            <p><strong>IP Address:</strong> <%= locals.lastLoginInfo.lastAttempt.ipAddress %></p>
+            <p><strong>Device/Browser:</strong> <%= locals.lastLoginInfo.lastAttempt.userAgent %></p>
+            
+            <% if (locals.lastLoginInfo.recentFailedAttempts > 0) { %>
+                <p style="color: orange;"><strong>Warning:</strong> 
+                    <%= locals.lastLoginInfo.recentFailedAttempts %> failed login attempt(s) in the last 24 hours.
+                </p>
+            <% } %>
+            
+            <% if (!locals.lastLoginInfo.lastAttempt.wasSuccessful) { %>
+                <p style="color: red;"><strong>Security Alert:</strong> 
+                    If this failed login attempt was not you, please change your password immediately.
+                </p>
+            <% } %>
+        </div>
+    <% } %>
+
     <!-- New post form -->
     <form action="post" method="POST">
         <input type="hidden" name="back" value="home">

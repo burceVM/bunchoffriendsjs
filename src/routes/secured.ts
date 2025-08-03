@@ -62,7 +62,22 @@ route.get('/home', async (req, res) => {
     } else {
         posts = await req.session.user?.findFriendPosts();
     }
-    res.render('home', { ...req.session, view: 'home', posts, user: req.session.user });
+    
+    // Get last login info from session (set during login)
+    const lastLoginInfo = req.session.lastLoginInfo;
+    
+    // Clear the lastLoginInfo from session after displaying it once
+    if (req.session.lastLoginInfo) {
+        req.session.lastLoginInfo = undefined;
+    }
+    
+    res.render('home', { 
+        ...req.session, 
+        view: 'home', 
+        posts, 
+        user: req.session.user,
+        lastLoginInfo 
+    });
 });
 
 

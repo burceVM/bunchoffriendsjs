@@ -73,7 +73,13 @@ route.get('/home', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     else {
         posts = yield ((_c = req.session.user) === null || _c === void 0 ? void 0 : _c.findFriendPosts());
     }
-    res.render('home', Object.assign(Object.assign({}, req.session), { view: 'home', posts, user: req.session.user }));
+    // Get last login info from session (set during login)
+    const lastLoginInfo = req.session.lastLoginInfo;
+    // Clear the lastLoginInfo from session after displaying it once
+    if (req.session.lastLoginInfo) {
+        req.session.lastLoginInfo = undefined;
+    }
+    res.render('home', Object.assign(Object.assign({}, req.session), { view: 'home', posts, user: req.session.user, lastLoginInfo }));
 }));
 // Show a list of current friends and people who are not yet friends
 route.get('/friend_list', (req, res) => __awaiter(void 0, void 0, void 0, function* () {

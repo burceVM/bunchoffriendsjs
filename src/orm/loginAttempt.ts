@@ -15,6 +15,7 @@ export default class LoginAttempt {
         public attemptTime: Date,
         public isSuccessful: boolean,
         public ipAddress?: string,
+        public userAgent?: string,
         public id?: number
     ) {}
 
@@ -23,9 +24,9 @@ export default class LoginAttempt {
      */
     async create(): Promise<void> {
         const result = await alasql.promise(`
-            INSERT INTO login_attempts (username, attempt_time, is_successful, ip_address)
-            VALUES (?, ?, ?, ?)
-        `, [this.username, this.attemptTime.toISOString(), this.isSuccessful, this.ipAddress || null]);
+            INSERT INTO login_attempts (username, attempt_time, is_successful, ip_address, user_agent)
+            VALUES (?, ?, ?, ?, ?)
+        `, [this.username, this.attemptTime.toISOString(), this.isSuccessful, this.ipAddress || null, this.userAgent || null]);
         
         if (result && result.insertId) {
             this.id = result.insertId;
@@ -53,12 +54,14 @@ export default class LoginAttempt {
             attempt_time: string;
             is_successful: boolean;
             ip_address?: string;
+            user_agent?: string;
             id: number;
         }) => new LoginAttempt(
             row.username,
             new Date(row.attempt_time),
             row.is_successful,
             row.ip_address,
+            row.user_agent,
             row.id
         ));
     }
@@ -84,12 +87,14 @@ export default class LoginAttempt {
             attempt_time: string;
             is_successful: boolean;
             ip_address?: string;
+            user_agent?: string;
             id: number;
         }) => new LoginAttempt(
             row.username,
             new Date(row.attempt_time),
             row.is_successful,
             row.ip_address,
+            row.user_agent,
             row.id
         ));
     }
@@ -126,11 +131,13 @@ export default class LoginAttempt {
             attempt_time: string;
             is_successful: boolean;
             ip_address?: string;
+            user_agent?: string;
         }) => new LoginAttempt(
             row.username,
             new Date(row.attempt_time),
             row.is_successful,
             row.ip_address,
+            row.user_agent,
             row.id
         ));
     }
@@ -145,7 +152,8 @@ export default class LoginAttempt {
                 username text not null,
                 attempt_time datetime not null,
                 is_successful boolean not null,
-                ip_address text
+                ip_address text,
+                user_agent text
             );
         `);
 

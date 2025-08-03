@@ -17,6 +17,7 @@ import { AccountLockoutService } from '../services/accountLockoutService';
 import { PasswordResetService } from '../services/passwordResetService';
 import UserManagementLog from './userManagementLog';
 import { ReauthenticationService } from '../services/reauthenticationService';
+import { LoginTrackingService } from '../services/loginTrackingService';
 
 // Initialize the database with a schema and sample data
 // Run once on system startup
@@ -55,6 +56,7 @@ export default async function initialize(): Promise<void> {
     await PasswordHistory.initializeTable();
     await UserManagementLog.initializeTable();
     await ReauthenticationService.initializeReauthTable();
+    await LoginTrackingService.initializeTable();
 
     // Populate the database with sample data using secure password hashing
     const max = await User.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
@@ -108,6 +110,83 @@ export default async function initialize(): Promise<void> {
         console.log('- Historical passwords added for reuse testing');
         console.log('- Login: carol / password');
         console.log('- Cannot reuse: oldpassword1, oldpassword2, temppass123, password123, password');
+        
+        // Add some historical login attempts for testing login tracking
+        console.log('Setting up test login history for Carol...');
+        
+        const testLoginHistory = [
+            // Successful logins from different times and locations
+            {
+                ipAddress: '192.168.1.100',
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/91.0',
+                wasSuccessful: true,
+                hoursAgo: 48 // 2 days ago
+            },
+            {
+                ipAddress: '10.0.0.5',
+                userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) Safari/604.1',
+                wasSuccessful: true,
+                hoursAgo: 72 // 3 days ago
+            },
+            // Failed login attempts (potential security incidents)
+            {
+                ipAddress: '203.0.113.42', // Different IP (potential attacker)
+                userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/90.0',
+                wasSuccessful: false,
+                hoursAgo: 6 // 6 hours ago (recent failed attempt)
+            },
+            {
+                ipAddress: '203.0.113.42', // Same suspicious IP
+                userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/90.0',
+                wasSuccessful: false,
+                hoursAgo: 8 // 8 hours ago
+            },
+            {
+                ipAddress: '198.51.100.123', // Another suspicious IP
+                userAgent: 'Python-requests/2.25.1', // Automated tool
+                wasSuccessful: false,
+                hoursAgo: 12 // 12 hours ago
+            }
+        ];
+        
+        for (const loginRecord of testLoginHistory) {
+            const attemptTime = new Date(Date.now() - (loginRecord.hoursAgo * 60 * 60 * 1000));
+            
+            // Insert login record directly with custom timestamp
+            await alasql.promise(`
+                INSERT INTO login_tracking (
+                    username, 
+                    user_id, 
+                    ip_address, 
+                    user_agent, 
+                    was_successful, 
+                    attempt_time,
+                    created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            `, [
+                'carol',
+                carol.id,
+                loginRecord.ipAddress,
+                loginRecord.userAgent,
+                loginRecord.wasSuccessful ? 1 : 0,
+                attemptTime.toISOString(),
+                attemptTime.toISOString()
+            ]);
+        }
+        
+        console.log('Test login history added for Carol:');
+        console.log('- 2 successful logins from trusted devices');
+        console.log('- 3 failed login attempts from suspicious IPs');
+        console.log('- Recent failed attempts will trigger security warnings');
+        
+        // Debug: Verify the data was inserted
+        const verifyData = await alasql.promise(`
+            SELECT * FROM login_tracking WHERE username = 'carol' ORDER BY attempt_time DESC
+        `);
+        console.log('DEBUG: Carol login tracking records:', verifyData.length, 'records found');
+        if (verifyData.length > 0) {
+            console.log('DEBUG: Most recent record:', JSON.stringify(verifyData[0], null, 2));
+        }
     }
     
     // Users are already created with secure password hashes
