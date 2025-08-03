@@ -12,6 +12,7 @@ import alasql from 'alasql';
 import User from './user';
 import Friend from './friend';
 import Post from './post';
+import PasswordHistory from './passwordHistory';
 import { AccountLockoutService } from '../services/accountLockoutService';
 import { PasswordResetService } from '../services/passwordResetService';
 
@@ -45,6 +46,11 @@ export default async function initialize(): Promise<void> {
             constraint creator_fk foreign key (creator) references users(id)
         )`
     );
+
+    // Initialize core tables for security features before creating users
+    await AccountLockoutService.initializeTables();
+    await PasswordResetService.initializeTables();
+    await PasswordHistory.initializeTable();
 
     // Populate the database with sample data using secure password hashing
     const max = await User.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
@@ -112,12 +118,6 @@ export default async function initialize(): Promise<void> {
     await new Post(marcia, 'I could listen to Davy Jones all night', new Date('2020-1-7 20:19:00'), 0).create();
     await new Post(jan, 'Feeling low', new Date('2020-1-8 09:15:00'), 0).create();
     await new Post(cindy, 'I have just heard an amazing secret', new Date('2020-1-11 13:11:00'), 0).create();
-    
-    // Initialize login attempt tracking for account lockout functionality
-    await AccountLockoutService.initializeTables();
-    
-    // Initialize password reset functionality with security questions
-    await PasswordResetService.initializeTables();
     
     // Set up security questions for all users
     console.log('Setting up security questions for all users...');

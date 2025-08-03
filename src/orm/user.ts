@@ -11,6 +11,7 @@
 import alasql from 'alasql';
 import Post from './post';
 import { hashPassword, verifyPassword, needsRehashing } from '../utils/passwordSecurity';
+import { PasswordHistoryService } from '../services/passwordHistoryService';
 
 // A user in the system
 export default class User {
@@ -122,20 +123,31 @@ export default class User {
         }
     }
 
-    // Change the password for this user with secure hashing
+    // Change the password for this user with secure hashing and history tracking
     async changePassword(newPassword: string): Promise<void> {
         try {
-            // Hash the new password securely
-            const newPasswordHash = await hashPassword(newPassword);
+            if (!this.id) {
+                throw new Error('User must have an ID to change password');
+            }
+
+            // Use password history service to handle password change with reuse prevention
+            const result = await PasswordHistoryService.changePasswordWithHistory(
+                this.id, 
+                newPassword,
+                async (passwordHash: string) => {
+                    // Update password hash in AlaSQL
+                    await alasql('UPDATE users SET password = ? WHERE username = ?', [passwordHash, this.username]);
+                    // Update the instance
+                    this.passwordHash = passwordHash;
+                }
+            );
             
-            // Update password hash in AlaSQL
-            await alasql('UPDATE users SET password = ? WHERE username = ?', [newPasswordHash, this.username]);
-            
-            // Update the instance
-            this.passwordHash = newPasswordHash;
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to change password');
+            }
         } catch (error) {
             console.error('Password change error:', error);
-            throw new Error('Failed to change password securely');
+            throw error; // Preserve the original error (might be about password reuse)
         }
     }
 
@@ -155,6 +167,11 @@ export default class User {
             
             // Save to database
             await user.create();
+
+            // Initialize password history for the new user
+            if (user.id) {
+                await PasswordHistoryService.initializePasswordHistoryForUser(user.id, passwordHash);
+            }
             
             return user;
         } catch (error) {

@@ -24,6 +24,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const alasql_1 = __importDefault(require("alasql"));
 const post_1 = __importDefault(require("./post"));
 const passwordSecurity_1 = require("../utils/passwordSecurity");
+const passwordHistoryService_1 = require("../services/passwordHistoryService");
 // A user in the system
 class User {
     constructor(username, // Login name
@@ -131,20 +132,27 @@ class User {
             }
         });
     }
-    // Change the password for this user with secure hashing
+    // Change the password for this user with secure hashing and history tracking
     changePassword(newPassword) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                // Hash the new password securely
-                const newPasswordHash = yield passwordSecurity_1.hashPassword(newPassword);
-                // Update password hash in AlaSQL
-                yield alasql_1.default('UPDATE users SET password = ? WHERE username = ?', [newPasswordHash, this.username]);
-                // Update the instance
-                this.passwordHash = newPasswordHash;
+                if (!this.id) {
+                    throw new Error('User must have an ID to change password');
+                }
+                // Use password history service to handle password change with reuse prevention
+                const result = yield passwordHistoryService_1.PasswordHistoryService.changePasswordWithHistory(this.id, newPassword, (passwordHash) => __awaiter(this, void 0, void 0, function* () {
+                    // Update password hash in AlaSQL
+                    yield alasql_1.default('UPDATE users SET password = ? WHERE username = ?', [passwordHash, this.username]);
+                    // Update the instance
+                    this.passwordHash = passwordHash;
+                }));
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to change password');
+                }
             }
             catch (error) {
                 console.error('Password change error:', error);
-                throw new Error('Failed to change password securely');
+                throw error; // Preserve the original error (might be about password reuse)
             }
         });
     }
@@ -162,6 +170,10 @@ class User {
                 const user = new User(username, passwordHash, fullName, role);
                 // Save to database
                 yield user.create();
+                // Initialize password history for the new user
+                if (user.id) {
+                    yield passwordHistoryService_1.PasswordHistoryService.initializePasswordHistoryForUser(user.id, passwordHash);
+                }
                 return user;
             }
             catch (error) {

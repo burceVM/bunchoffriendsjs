@@ -25,6 +25,7 @@ const alasql_1 = __importDefault(require("alasql"));
 const user_1 = __importDefault(require("./user"));
 const friend_1 = __importDefault(require("./friend"));
 const post_1 = __importDefault(require("./post"));
+const passwordHistory_1 = __importDefault(require("./passwordHistory"));
 const accountLockoutService_1 = require("../services/accountLockoutService");
 const passwordResetService_1 = require("../services/passwordResetService");
 // Initialize the database with a schema and sample data
@@ -56,6 +57,10 @@ function initialize() {
             likes integer,
             constraint creator_fk foreign key (creator) references users(id)
         )`);
+        // Initialize core tables for security features before creating users
+        yield accountLockoutService_1.AccountLockoutService.initializeTables();
+        yield passwordResetService_1.PasswordResetService.initializeTables();
+        yield passwordHistory_1.default.initializeTable();
         // Populate the database with sample data using secure password hashing
         const max = yield user_1.default.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
         const malcolm = yield user_1.default.createUser('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');
@@ -116,10 +121,6 @@ function initialize() {
         yield new post_1.default(marcia, 'I could listen to Davy Jones all night', new Date('2020-1-7 20:19:00'), 0).create();
         yield new post_1.default(jan, 'Feeling low', new Date('2020-1-8 09:15:00'), 0).create();
         yield new post_1.default(cindy, 'I have just heard an amazing secret', new Date('2020-1-11 13:11:00'), 0).create();
-        // Initialize login attempt tracking for account lockout functionality
-        yield accountLockoutService_1.AccountLockoutService.initializeTables();
-        // Initialize password reset functionality with security questions
-        yield passwordResetService_1.PasswordResetService.initializeTables();
         // Set up security questions for all users
         console.log('Setting up security questions for all users...');
         // Admin and moderator users
