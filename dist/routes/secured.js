@@ -30,11 +30,32 @@ const route = express_promise_router_1.default();
 //--------------------------------------------------------
 // Check the session is logged in before continuing
 // If the user has not logged in, redirect back to home
+// Fail securely with comprehensive validation
 route.use((req, res, next) => {
-    if (!req.session.user)
-        res.redirect(303, '/');
-    else
+    try {
+        // Fail securely: comprehensive authentication check
+        if (!req.session ||
+            req.session === null ||
+            typeof req.session !== 'object' ||
+            !req.session.user ||
+            req.session.user === null ||
+            typeof req.session.user !== 'object' ||
+            !req.session.user.id ||
+            !req.session.user.username ||
+            typeof req.session.user.id !== 'number' ||
+            typeof req.session.user.username !== 'string' ||
+            req.session.user.username.trim() === '') {
+            res.redirect(303, '/');
+            return;
+        }
         next();
+    }
+    catch (error) {
+        // Fail securely: any exception denies access
+        console.error('Secured route authentication error:', error);
+        res.redirect(303, '/');
+        return;
+    }
 });
 // Render the home page
 // Includes a list of posts by friends

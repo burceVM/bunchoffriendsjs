@@ -10,16 +10,17 @@
 
 import alasql from 'alasql';
 import Post from './post';
+import { hashPassword, verifyPassword, needsRehashing } from '../utils/passwordSecurity';
 
 // A user in the system
 export default class User {
 
     constructor(
-        public username: string, // Login name
-        public password: string, // Unhashed password
-        public fullName: string, // Display name for the user interface
-        public role: string, // Role of the user (e.g., 'user', 'admin')
-        public id?: number) {    // Unique identifier for the user
+        public username: string,     // Login name
+        public passwordHash: string, // Bcrypt salted hash of password
+        public fullName: string,     // Display name for the user interface
+        public role: string,         // Role of the user (e.g., 'user', 'admin')
+        public id?: number) {        // Unique identifier for the user
     }
 
     // Find the unique user with a matching id
@@ -32,17 +33,45 @@ export default class User {
             return null;
     }
 
-    // Find the unique user with a matching login username
-    // returns null if there is no such user
+    // Find the unique user with a matching login username and password
+    // Uses secure password verification with bcrypt
+    // returns null if there is no such user or password doesn't match
     static async byLogin(username: string, password: string): Promise<User | null> {
-        const users = await User.byWhere(
-            `username = '${username}' 
-             and password = '${password}'`
-        );
-        if (users.length > 0)
-            return users[0];
-        else
-            return null;
+        try {
+            // Input validation
+            if (!username || !password || 
+                typeof username !== 'string' || 
+                typeof password !== 'string') {
+                return null;
+            }
+
+            // First find user by username only
+            const users = await User.byWhere(`username = '${username.replace(/'/g, '\'\'')}'`);
+            
+            if (users.length === 0) {
+                return null;
+            }
+
+            const user = users[0];
+            
+            // Verify password using bcrypt
+            const isPasswordValid = await verifyPassword(password, user.passwordHash);
+            
+            if (!isPasswordValid) {
+                return null;
+            }
+
+            // Check if password hash needs updating (due to security improvements)
+            if (needsRehashing(user.passwordHash)) {
+                console.log(`Password hash for user ${username} needs updating to current security standards`);
+                // Note: In production, you might want to automatically rehash here
+            }
+
+            return user;
+        } catch (error) {
+            console.error('Login verification error:', error);
+            return null; // Fail securely
+        }
     }
 
     // Find all users matching the supplied SQL 'where' clause
@@ -53,29 +82,66 @@ export default class User {
              where ${where}
              ` + (order ? `order by ${order}` : '')
         );
-        return (rows as any[]).map(row => new User(row.username, row.password, row.fullName, row.role, row.id));
+        
+        // Map database rows to User objects with proper type safety
+        return (rows as Array<{id: number, username: string, password: string, fullName: string, role: string}>)
+            .map(row => new User(row.username, row.password, row.fullName, row.role, row.id));
     }
 
-    // Create a new user in the database
+    // Create a new user in the database with secure password hashing
     // Updates 'this' with the new 'id'
     async create(): Promise<void> {
         try {
             await alasql.promise(
                 `insert into users (username, password, fullName, role) 
-                values ('${this.username}', '${this.password}', '${this.fullName}', '${this.role}')`
+                values ('${this.username}', '${this.passwordHash}', '${this.fullName}', '${this.role}')`
             );
-            // Retrive the identifier of the new row
+            // Retrieve the identifier of the new row
             this.id = alasql.autoval('users', 'id');
         } catch (e) {
             throw new Error('Username already exists');
         }
     }
 
-    // Change the password for this user
-    async changePassword(newPassword: string) {
-        // Update password in AlaSQL
-        await alasql('UPDATE users SET password = ? WHERE username = ?', [newPassword, this.username]);
-        this.password = newPassword;
+    // Change the password for this user with secure hashing
+    async changePassword(newPassword: string): Promise<void> {
+        try {
+            // Hash the new password securely
+            const newPasswordHash = await hashPassword(newPassword);
+            
+            // Update password hash in AlaSQL
+            await alasql('UPDATE users SET password = ? WHERE username = ?', [newPasswordHash, this.username]);
+            
+            // Update the instance
+            this.passwordHash = newPasswordHash;
+        } catch (error) {
+            console.error('Password change error:', error);
+            throw new Error('Failed to change password securely');
+        }
+    }
+
+    // Static method to create a new user with secure password hashing
+    static async createUser(username: string, plainPassword: string, fullName: string, role: string): Promise<User> {
+        try {
+            // Input validation
+            if (!username || !plainPassword || !fullName || !role) {
+                throw new Error('All user fields are required');
+            }
+
+            // Hash the password securely
+            const passwordHash = await hashPassword(plainPassword);
+            
+            // Create user instance with hashed password
+            const user = new User(username, passwordHash, fullName, role);
+            
+            // Save to database
+            await user.create();
+            
+            return user;
+        } catch (error) {
+            console.error('User creation error:', error);
+            throw error; // Re-throw to allow caller to handle
+        }
     }
 
     // Find all friends of this user

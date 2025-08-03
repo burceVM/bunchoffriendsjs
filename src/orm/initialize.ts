@@ -44,36 +44,24 @@ export default async function initialize(): Promise<void> {
         )`
     );
 
-    // Populate the database with sample data
-    const max = new User('max', 'Maximuth1', 'Max LOLL', 'admin');
+    // Populate the database with sample data using secure password hashing
+    await User.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
 
-    const malcolm = new User('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');
+    await User.createUser('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');
 
-    const carol = new User('carol', 'password', 'Carol', 'normie');
-    const mike = new User('mike', 'qwerty', 'Mike', 'normie');
-    const alice = new User('alice', '123456', 'Alice', 'normie');
-    const sam = new User('sam', 'iloveyou', 'Sam', 'normie');
-    const greg = new User('greg', 'bravo', 'Greg', 'normie');
-    const peter = new User('peter', 'volcano', 'Peter', 'normie');
-    const bobby = new User('bobby', 'racecar', 'Bobby', 'normie');
-    const marcia = new User('marcia', 'davyjones', 'Marcia', 'normie');
-    const jan = new User('jan', 'glass', 'Jan', 'normie');
-    const cindy = new User('cindy', 'thindy', 'Cindy', 'normie');
+    const carol = await User.createUser('carol', 'password', 'Carol', 'normie');
+    const mike = await User.createUser('mike', 'qwerty', 'Mike', 'normie');
+    const alice = await User.createUser('alice', '123456', 'Alice', 'normie');
+    const sam = await User.createUser('sam', 'iloveyou', 'Sam', 'normie');
+    const greg = await User.createUser('greg', 'bravo', 'Greg', 'normie');
+    const peter = await User.createUser('peter', 'volcano', 'Peter', 'normie');
+    const bobby = await User.createUser('bobby', 'racecar', 'Bobby', 'normie');
+    const marcia = await User.createUser('marcia', 'davyjones', 'Marcia', 'normie');
+    const jan = await User.createUser('jan', 'glass', 'Jan', 'normie');
+    const cindy = await User.createUser('cindy', 'thindy', 'Cindy', 'normie');
     
-    await max.create();
-
-    await malcolm.create();
-
-    await carol.create();
-    await mike.create();
-    await alice.create();
-    await sam.create();
-    await greg.create();
-    await peter.create();
-    await bobby.create();
-    await marcia.create();
-    await jan.create();
-    await cindy.create();
+    // Users are already created with secure password hashes
+    // No need to call create() again as createUser() handles it
 
     await new Friend(marcia, carol).create();
     await new Friend(marcia, jan).create();

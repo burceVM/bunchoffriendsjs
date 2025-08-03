@@ -54,31 +54,21 @@ function initialize() {
             likes integer,
             constraint creator_fk foreign key (creator) references users(id)
         )`);
-        // Populate the database with sample data
-        const max = new user_1.default('max', 'Maximuth1', 'Max LOLL', 'admin');
-        const malcolm = new user_1.default('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');
-        const carol = new user_1.default('carol', 'password', 'Carol', 'normie');
-        const mike = new user_1.default('mike', 'qwerty', 'Mike', 'normie');
-        const alice = new user_1.default('alice', '123456', 'Alice', 'normie');
-        const sam = new user_1.default('sam', 'iloveyou', 'Sam', 'normie');
-        const greg = new user_1.default('greg', 'bravo', 'Greg', 'normie');
-        const peter = new user_1.default('peter', 'volcano', 'Peter', 'normie');
-        const bobby = new user_1.default('bobby', 'racecar', 'Bobby', 'normie');
-        const marcia = new user_1.default('marcia', 'davyjones', 'Marcia', 'normie');
-        const jan = new user_1.default('jan', 'glass', 'Jan', 'normie');
-        const cindy = new user_1.default('cindy', 'thindy', 'Cindy', 'normie');
-        yield max.create();
-        yield malcolm.create();
-        yield carol.create();
-        yield mike.create();
-        yield alice.create();
-        yield sam.create();
-        yield greg.create();
-        yield peter.create();
-        yield bobby.create();
-        yield marcia.create();
-        yield jan.create();
-        yield cindy.create();
+        // Populate the database with sample data using secure password hashing
+        yield user_1.default.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
+        yield user_1.default.createUser('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');
+        const carol = yield user_1.default.createUser('carol', 'password', 'Carol', 'normie');
+        const mike = yield user_1.default.createUser('mike', 'qwerty', 'Mike', 'normie');
+        const alice = yield user_1.default.createUser('alice', '123456', 'Alice', 'normie');
+        const sam = yield user_1.default.createUser('sam', 'iloveyou', 'Sam', 'normie');
+        const greg = yield user_1.default.createUser('greg', 'bravo', 'Greg', 'normie');
+        const peter = yield user_1.default.createUser('peter', 'volcano', 'Peter', 'normie');
+        const bobby = yield user_1.default.createUser('bobby', 'racecar', 'Bobby', 'normie');
+        const marcia = yield user_1.default.createUser('marcia', 'davyjones', 'Marcia', 'normie');
+        const jan = yield user_1.default.createUser('jan', 'glass', 'Jan', 'normie');
+        const cindy = yield user_1.default.createUser('cindy', 'thindy', 'Cindy', 'normie');
+        // Users are already created with secure password hashes
+        // No need to call create() again as createUser() handles it
         yield new friend_1.default(marcia, carol).create();
         yield new friend_1.default(marcia, jan).create();
         yield new friend_1.default(jan, marcia).create();

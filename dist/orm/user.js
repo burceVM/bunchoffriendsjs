@@ -23,15 +23,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const alasql_1 = __importDefault(require("alasql"));
 const post_1 = __importDefault(require("./post"));
+const passwordSecurity_1 = require("../utils/passwordSecurity");
 // A user in the system
 class User {
     constructor(username, // Login name
-    password, // Unhashed password
+    passwordHash, // Bcrypt salted hash of password
     fullName, // Display name for the user interface
     role, // Role of the user (e.g., 'user', 'admin')
     id) {
         this.username = username;
-        this.password = password;
+        this.passwordHash = passwordHash;
         this.fullName = fullName;
         this.role = role;
         this.id = id;
@@ -47,16 +48,40 @@ class User {
                 return null;
         });
     }
-    // Find the unique user with a matching login username
-    // returns null if there is no such user
+    // Find the unique user with a matching login username and password
+    // Uses secure password verification with bcrypt
+    // returns null if there is no such user or password doesn't match
     static byLogin(username, password) {
         return __awaiter(this, void 0, void 0, function* () {
-            const users = yield User.byWhere(`username = '${username}' 
-             and password = '${password}'`);
-            if (users.length > 0)
-                return users[0];
-            else
-                return null;
+            try {
+                // Input validation
+                if (!username || !password ||
+                    typeof username !== 'string' ||
+                    typeof password !== 'string') {
+                    return null;
+                }
+                // First find user by username only
+                const users = yield User.byWhere(`username = '${username.replace(/'/g, '\'\'')}'`);
+                if (users.length === 0) {
+                    return null;
+                }
+                const user = users[0];
+                // Verify password using bcrypt
+                const isPasswordValid = yield passwordSecurity_1.verifyPassword(password, user.passwordHash);
+                if (!isPasswordValid) {
+                    return null;
+                }
+                // Check if password hash needs updating (due to security improvements)
+                if (passwordSecurity_1.needsRehashing(user.passwordHash)) {
+                    console.log(`Password hash for user ${username} needs updating to current security standards`);
+                    // Note: In production, you might want to automatically rehash here
+                }
+                return user;
+            }
+            catch (error) {
+                console.error('Login verification error:', error);
+                return null; // Fail securely
+            }
         });
     }
     // Find all users matching the supplied SQL 'where' clause
@@ -66,17 +91,19 @@ class User {
              from users
              where ${where}
              ` + (order ? `order by ${order}` : ''));
-            return rows.map(row => new User(row.username, row.password, row.fullName, row.role, row.id));
+            // Map database rows to User objects with proper type safety
+            return rows
+                .map(row => new User(row.username, row.password, row.fullName, row.role, row.id));
         });
     }
-    // Create a new user in the database
+    // Create a new user in the database with secure password hashing
     // Updates 'this' with the new 'id'
     create() {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 yield alasql_1.default.promise(`insert into users (username, password, fullName, role) 
-                values ('${this.username}', '${this.password}', '${this.fullName}', '${this.role}')`);
-                // Retrive the identifier of the new row
+                values ('${this.username}', '${this.passwordHash}', '${this.fullName}', '${this.role}')`);
+                // Retrieve the identifier of the new row
                 this.id = alasql_1.default.autoval('users', 'id');
             }
             catch (e) {
@@ -84,12 +111,43 @@ class User {
             }
         });
     }
-    // Change the password for this user
+    // Change the password for this user with secure hashing
     changePassword(newPassword) {
         return __awaiter(this, void 0, void 0, function* () {
-            // Update password in AlaSQL
-            yield alasql_1.default('UPDATE users SET password = ? WHERE username = ?', [newPassword, this.username]);
-            this.password = newPassword;
+            try {
+                // Hash the new password securely
+                const newPasswordHash = yield passwordSecurity_1.hashPassword(newPassword);
+                // Update password hash in AlaSQL
+                yield alasql_1.default('UPDATE users SET password = ? WHERE username = ?', [newPasswordHash, this.username]);
+                // Update the instance
+                this.passwordHash = newPasswordHash;
+            }
+            catch (error) {
+                console.error('Password change error:', error);
+                throw new Error('Failed to change password securely');
+            }
+        });
+    }
+    // Static method to create a new user with secure password hashing
+    static createUser(username, plainPassword, fullName, role) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                // Input validation
+                if (!username || !plainPassword || !fullName || !role) {
+                    throw new Error('All user fields are required');
+                }
+                // Hash the password securely
+                const passwordHash = yield passwordSecurity_1.hashPassword(plainPassword);
+                // Create user instance with hashed password
+                const user = new User(username, passwordHash, fullName, role);
+                // Save to database
+                yield user.create();
+                return user;
+            }
+            catch (error) {
+                console.error('User creation error:', error);
+                throw error; // Re-throw to allow caller to handle
+            }
         });
     }
     // Find all friends of this user
