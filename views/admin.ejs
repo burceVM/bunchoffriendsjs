@@ -1,4 +1,4 @@
-<%- include('header_guest') %>
+<%- include('header_user') %>
 <div class="content">
     <h1>Admin Panel</h1>
     
@@ -11,6 +11,13 @@
             <div id="lockout-stats-display">
                 <button onclick="loadLockoutStats()">Load Statistics</button>
             </div>
+        </div>
+    </div>
+
+    <div class="admin-section">
+        <h2>User Management Logs</h2>
+        <div id="user-management-logs-display">
+            <button onclick="loadUserManagementLogs()">Load Logs</button>
         </div>
     </div>
 
@@ -122,5 +129,48 @@ async function loadLockoutStats(hours = 24) {
 // Load initial statistics
 document.addEventListener('DOMContentLoaded', function() {
     loadLockoutStats();
+});
+</script>
+
+<script>
+async function loadUserManagementLogs() {
+    try {
+        const response = await fetch('/admin/user-management-logs');
+        const data = await response.json();
+        if (data.success) {
+            const logs = data.logs;
+            const display = document.getElementById('user-management-logs-display');
+            display.innerHTML = `
+                <table border="1" style="border-collapse: collapse;">
+                    <tr>
+                        <th>Time</th>
+                        <th>Actor</th>
+                        <th>Action</th>
+                        <th>Target</th>
+                        <th>Role</th>
+                    </tr>
+                    ${logs.map(log => `
+                        <tr>
+                            <td>${new Date(log.timestamp).toLocaleString()}</td>
+                            <td>${log.actorUsername} (#${log.actorId})</td>
+                            <td>${log.action}</td>
+                            <td>${log.targetUsername} (#${log.targetId})</td>
+                            <td>${log.targetRole}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
+        } else {
+            document.getElementById('user-management-logs-display').innerHTML = 
+                `<div class="error">Error: ${data.error}</div>`;
+        }
+    } catch (error) {
+        document.getElementById('user-management-logs-display').innerHTML = 
+            `<div class="error">Failed to load logs: ${error.message}</div>`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadUserManagementLogs();
 });
 </script>

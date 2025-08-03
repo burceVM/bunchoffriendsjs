@@ -28,6 +28,7 @@ const post_1 = __importDefault(require("./post"));
 const passwordHistory_1 = __importDefault(require("./passwordHistory"));
 const accountLockoutService_1 = require("../services/accountLockoutService");
 const passwordResetService_1 = require("../services/passwordResetService");
+const userManagementLog_1 = __importDefault(require("./userManagementLog"));
 // Initialize the database with a schema and sample data
 // Run once on system startup
 function initialize() {
@@ -61,6 +62,7 @@ function initialize() {
         yield accountLockoutService_1.AccountLockoutService.initializeTables();
         yield passwordResetService_1.PasswordResetService.initializeTables();
         yield passwordHistory_1.default.initializeTable();
+        yield userManagementLog_1.default.initializeTable();
         // Populate the database with sample data using secure password hashing
         const max = yield user_1.default.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
         const malcolm = yield user_1.default.createUser('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');

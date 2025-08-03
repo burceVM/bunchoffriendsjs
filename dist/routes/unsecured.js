@@ -25,6 +25,7 @@ const express_promise_router_1 = __importDefault(require("express-promise-router
 const orm_1 = require("../orm");
 const auth_1 = require("../middleware/auth");
 const accountLockoutService_1 = require("../services/accountLockoutService");
+const userManagementLog_1 = __importDefault(require("../orm/userManagementLog"));
 const route = express_promise_router_1.default();
 //--------------------------------------------------------
 // Routes that require authentication
@@ -147,8 +148,8 @@ function validateRedirectUrl(url) {
     }
 }
 // Show the admin zone - restricted to admin users only
-route.get('/admin', auth_1.allowRoles('admin'), (_req, res) => {
-    res.render('admin', { view: 'admin' });
+route.get('/admin', auth_1.allowRoles('admin'), (req, res) => {
+    res.render('admin', { view: 'admin', user: req.session.user });
 });
 // Handle a query posted to the admin zone - restricted to admin users only
 route.post('/admin', auth_1.allowRoles('admin'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -258,6 +259,22 @@ route.get('/admin/lockout-stats', auth_1.allowRoles('admin'), (req, res) => __aw
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve lockout statistics'
+        });
+    }
+}));
+route.get('/admin/user-management-logs', auth_1.allowRoles('admin'), (_, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const logs = yield userManagementLog_1.default.getRecent(100);
+        res.json({
+            success: true,
+            logs
+        });
+    }
+    catch (error) {
+        console.error('Error retrieving user management logs:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve user management logs'
         });
     }
 }));

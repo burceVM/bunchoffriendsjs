@@ -2,6 +2,7 @@ import Router from 'express-promise-router';
 import { User } from '../orm';
 import { allowRoles } from '../middleware/auth';
 import alasql from 'alasql';
+import UserManagementLog from '../orm/userManagementLog';
 
 const route = Router();
 
@@ -43,11 +44,24 @@ route.post('/delete-user/:id', allowRoles('moderator', 'admin'), async (req, res
     }
 
     await alasql.promise(`DELETE FROM users WHERE id = ${targetId}`);
+
+    // Log deletion
+    const log = new UserManagementLog(
+        currentUser.id!,
+        currentUser.username,
+        'delete',
+        targetUser.id!,
+        targetUser.username,
+        targetUser.role
+    );
+    await log.create();
+
     res.redirect(303, '/manage-users');
 });
 
 // Change user role (admin only)
 route.post('/change-role/:id', allowRoles('admin'), async (req, res) => {
+    const currentUser = req.session.user!;
     const targetId = Number(req.params.id);
     const newRole = String(req.body.role || '').toLowerCase();
 
@@ -57,7 +71,34 @@ route.post('/change-role/:id', allowRoles('admin'), async (req, res) => {
         return;
     }
 
+    const targetUser = await User.byId(targetId);
+    if (!targetUser) {
+        res.status(404).send('User not found');
+        return;
+    }
+
+    const oldRole = targetUser.role;
     await alasql.promise(`UPDATE users SET role = '${newRole}' WHERE id = ${targetId}`);
+
+    // Log promotion/demotion
+    let action = '';
+    if (oldRole !== newRole) {
+        if (newRole === 'admin' || newRole === 'moderator') {
+            action = 'promote';
+        } else {
+            action = 'demote';
+        }
+        const log = new UserManagementLog(
+            currentUser.id!,
+            currentUser.username,
+            action,
+            targetUser.id!,
+            targetUser.username,
+            newRole
+        );
+        await log.create();
+    }
+
     res.redirect(303, '/manage-users');
 });
 

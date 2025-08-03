@@ -15,6 +15,7 @@ import Post from './post';
 import PasswordHistory from './passwordHistory';
 import { AccountLockoutService } from '../services/accountLockoutService';
 import { PasswordResetService } from '../services/passwordResetService';
+import UserManagementLog from './userManagementLog';
 
 // Initialize the database with a schema and sample data
 // Run once on system startup
@@ -51,6 +52,7 @@ export default async function initialize(): Promise<void> {
     await AccountLockoutService.initializeTables();
     await PasswordResetService.initializeTables();
     await PasswordHistory.initializeTable();
+    await UserManagementLog.initializeTable();
 
     // Populate the database with sample data using secure password hashing
     const max = await User.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');

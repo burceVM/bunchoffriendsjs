@@ -12,6 +12,7 @@ import Router from 'express-promise-router';
 import { User, Post, raw } from '../orm';
 import { requireAuth, allowRoles } from '../middleware/auth';
 import { AccountLockoutService } from '../services/accountLockoutService';
+import UserManagementLog from '../orm/userManagementLog';
 const route = Router();
 
 //--------------------------------------------------------
@@ -153,8 +154,8 @@ function validateRedirectUrl(url: string): string {
 }
 
 // Show the admin zone - restricted to admin users only
-route.get('/admin', allowRoles('admin'), (_req, res) => {
-    res.render('admin', { view: 'admin'});
+route.get('/admin', allowRoles('admin'), (req, res) => {
+    res.render('admin', { view: 'admin', user: req.session.user });
 });
 
 // Handle a query posted to the admin zone - restricted to admin users only
@@ -270,6 +271,22 @@ route.get('/admin/lockout-stats', allowRoles('admin'), async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve lockout statistics'
+        });
+    }
+});
+
+route.get('/admin/user-management-logs', allowRoles('admin'), async (_, res) => {
+    try {
+        const logs = await UserManagementLog.getRecent(100);
+        res.json({
+            success: true,
+            logs
+        });
+    } catch (error) {
+        console.error('Error retrieving user management logs:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve user management logs'
         });
     }
 });

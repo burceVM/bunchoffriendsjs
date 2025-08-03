@@ -16,6 +16,7 @@ const express_promise_router_1 = __importDefault(require("express-promise-router
 const orm_1 = require("../orm");
 const auth_1 = require("../middleware/auth");
 const alasql_1 = __importDefault(require("alasql"));
+const userManagementLog_1 = __importDefault(require("../orm/userManagementLog"));
 const route = express_promise_router_1.default();
 // Only moderators and admins can access this page
 route.get('/manage-users', auth_1.allowRoles('moderator', 'admin'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -49,10 +50,14 @@ route.post('/delete-user/:id', auth_1.allowRoles('moderator', 'admin'), (req, re
         return;
     }
     yield alasql_1.default.promise(`DELETE FROM users WHERE id = ${targetId}`);
+    // Log deletion
+    const log = new userManagementLog_1.default(currentUser.id, currentUser.username, 'delete', targetUser.id, targetUser.username, targetUser.role);
+    yield log.create();
     res.redirect(303, '/manage-users');
 }));
 // Change user role (admin only)
 route.post('/change-role/:id', auth_1.allowRoles('admin'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const currentUser = req.session.user;
     const targetId = Number(req.params.id);
     const newRole = String(req.body.role || '').toLowerCase();
     const validRoles = ['normie', 'moderator', 'admin'];
@@ -60,7 +65,25 @@ route.post('/change-role/:id', auth_1.allowRoles('admin'), (req, res) => __await
         res.status(400).send('Invalid role');
         return;
     }
+    const targetUser = yield orm_1.User.byId(targetId);
+    if (!targetUser) {
+        res.status(404).send('User not found');
+        return;
+    }
+    const oldRole = targetUser.role;
     yield alasql_1.default.promise(`UPDATE users SET role = '${newRole}' WHERE id = ${targetId}`);
+    // Log promotion/demotion
+    let action = '';
+    if (oldRole !== newRole) {
+        if (newRole === 'admin' || newRole === 'moderator') {
+            action = 'promote';
+        }
+        else {
+            action = 'demote';
+        }
+        const log = new userManagementLog_1.default(currentUser.id, currentUser.username, action, targetUser.id, targetUser.username, newRole);
+        yield log.create();
+    }
     res.redirect(303, '/manage-users');
 }));
 exports.default = route;
