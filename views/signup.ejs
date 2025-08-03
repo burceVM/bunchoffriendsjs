@@ -2,11 +2,12 @@
 <div class="content">
     <h1>Sign-up</h1>
     <form action="signup" method="POST">
-        <%- include('messages') %>
+        <%- include('validation_messages') %>
         <p>
             <label>Username:
-                <input type="text" name="username" value="<%- locals.username || '' %>">
+                <input type="text" name="username" value="<%- locals.username || '' %>" maxlength="50" pattern="[a-zA-Z0-9._-]+" title="Username can only contain letters, numbers, dots, underscores, and dashes">
             </label>
+            <small>Username must be 50 characters or less and contain only letters, numbers, dots, underscores, and dashes.</small>
         </p>
         <p>
             <label>Password:
@@ -27,8 +28,9 @@
         <% } %>
         <p>
             <label>Full Name:
-                <input type="text" name="fullName" value="<%- locals.fullName || '' %>">
+                <input type="text" name="fullName" value="<%- locals.fullName || '' %>" maxlength="100" required>
             </label>
+            <small>Full name must be 100 characters or less.</small>
         </p>
         
         <% if (locals.securityQuestions) { %>

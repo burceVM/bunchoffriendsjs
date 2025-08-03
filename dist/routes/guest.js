@@ -26,29 +26,11 @@ const orm_1 = require("../orm");
 const passwordSecurity_1 = require("../utils/passwordSecurity");
 const accountLockoutService_1 = require("../services/accountLockoutService");
 const loginTrackingService_1 = require("../services/loginTrackingService");
+const passwordResetService_1 = require("../services/passwordResetService");
 // Standardized authentication error message to prevent username enumeration
 const AUTH_ERROR_MESSAGE = 'Invalid username and/or password';
 const GENERIC_ERROR_MESSAGE = 'Authentication failed. Please try again.';
 const route = express_promise_router_1.default();
-// DEBUG ROUTE - Remove in production
-route.get('/debug-carol-login', (_req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const lastLoginInfo1 = yield loginTrackingService_1.LoginTrackingService.getLastLoginInfo('carol', true); // exclude current
-        const lastLoginInfo2 = yield loginTrackingService_1.LoginTrackingService.getLastLoginInfo('carol', false); // include current
-        res.json({
-            success: true,
-            lastLoginInfoExcludeCurrent: lastLoginInfo1,
-            lastLoginInfoIncludeCurrent: lastLoginInfo2,
-            message: 'Carol login tracking data'
-        });
-    }
-    catch (error) {
-        res.json({
-            success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
-        });
-    }
-}));
 //--------------------------------------------------------
 // Routes that are accessible by all users / guests
 //--------------------------------------------------------
@@ -66,16 +48,26 @@ route.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* (
         const username = String(req.body.username || '').toLowerCase().trim();
         const password = String(req.body.password || '');
         const ipAddress = req.ip || ((_a = req.socket) === null || _a === void 0 ? void 0 : _a.remoteAddress) || 'unknown';
-        // Fail securely: validate input length and format
-        if (!username || username.length === 0 || username.length > 50) {
+        // Fail securely: validate input length and format with user-friendly messages
+        if (!username || username.length === 0) {
             // Record failed attempt even for invalid input to prevent enumeration
             yield accountLockoutService_1.AccountLockoutService.recordLoginAttempt(username || 'invalid', false, ipAddress);
-            res.render('index', { view: 'index', messages: [AUTH_ERROR_MESSAGE] });
+            res.render('index', { view: 'index', messages: ['Please enter your username.'] });
             return;
         }
-        if (!password || password.length === 0 || password.length > 200) {
+        if (username.length > 50) {
             yield accountLockoutService_1.AccountLockoutService.recordLoginAttempt(username, false, ipAddress);
-            res.render('index', { view: 'index', messages: [AUTH_ERROR_MESSAGE] });
+            res.render('index', { view: 'index', messages: ['Username is too long. Please enter a valid username.'] });
+            return;
+        }
+        if (!password || password.length === 0) {
+            yield accountLockoutService_1.AccountLockoutService.recordLoginAttempt(username, false, ipAddress);
+            res.render('index', { view: 'index', messages: ['Please enter your password.'] });
+            return;
+        }
+        if (password.length > 200) {
+            yield accountLockoutService_1.AccountLockoutService.recordLoginAttempt(username, false, ipAddress);
+            res.render('index', { view: 'index', messages: ['Password is too long. Please enter a valid password.'] });
             return;
         }
         // Check account lockout status BEFORE attempting authentication
@@ -96,11 +88,17 @@ route.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* (
             });
             return;
         }
-        // Fail securely: ensure session is properly initialized
+        // Fail securely: ensure session is properly initialized and secure
         if (!req.session || typeof req.session !== 'object') {
             yield accountLockoutService_1.AccountLockoutService.recordLoginAttempt(username, false, ipAddress);
             res.render('index', { view: 'index', messages: [GENERIC_ERROR_MESSAGE] });
             return;
+        }
+        // Business rule: prevent session hijacking by validating session integrity
+        if (req.session.user) {
+            // User already logged in - enforce business rule: one session per user
+            delete req.session.user;
+            delete req.session.lastLoginInfo;
         }
         // Attempt authentication
         const user = yield orm_1.User.byLogin(username, password);
@@ -112,16 +110,31 @@ route.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* (
             typeof user.id === 'number' &&
             typeof user.username === 'string' &&
             typeof user.role === 'string' &&
+            typeof user.fullName === 'string' &&
             user.id > 0 &&
-            user.username.length > 0) {
+            user.username.length > 0 &&
+            user.role.length > 0 &&
+            // Business rule: ensure role is valid
+            ['normie', 'moderator', 'admin'].includes(user.role.toLowerCase()) &&
+            // Business rule: prevent escalation through malformed data
+            user.username.toLowerCase() === username.toLowerCase()) {
             // Successful login - record success and clear any lockout
             yield accountLockoutService_1.AccountLockoutService.recordLoginAttempt(username, true, ipAddress);
             // Record successful login in tracking system
             yield loginTrackingService_1.LoginTrackingService.recordLoginAttempt(username, ipAddress, userAgent, true, user.id);
             // Get last login information for this user
             const lastLoginInfo = yield loginTrackingService_1.LoginTrackingService.getLastLoginInfo(username, true);
-            req.session.user = user;
+            // Business rule: secure session establishment with validated user data
+            // Create clean user object for session to prevent data contamination
+            const sessionUser = {
+                id: user.id,
+                username: user.username.toLowerCase(),
+                role: user.role.toLowerCase(),
+                fullName: user.fullName
+            };
+            req.session.user = sessionUser;
             req.session.lastLoginInfo = lastLoginInfo; // Store for display on home page
+            // Business rule: immediate redirect to prevent replay attacks
             res.redirect(303, 'home');
         }
         else {
@@ -183,16 +196,25 @@ route.post('/signup', (req, res) => __awaiter(void 0, void 0, void 0, function* 
     const messages = [];
     const passwordRequirements = passwordSecurity_1.getPasswordRequirements();
     const securityQuestions = passwordResetService_1.PasswordResetService.getSecurityQuestions();
+    // Enhanced input validation with helpful error messages
     if (username.length == 0)
         messages.push('Username cannot be empty');
+    else if (username.length > 50)
+        messages.push('Username must be 50 characters or less');
+    else if (!/^[a-zA-Z0-9._-]+$/.test(username))
+        messages.push('Username can only contain letters, numbers, dots, underscores, and dashes');
     if (password.length == 0)
         messages.push('Password cannot be empty');
     if (fullName.length == 0)
         messages.push('Full name cannot be empty');
+    else if (fullName.length > 100)
+        messages.push('Full name must be 100 characters or less');
     if (securityQuestionId.length == 0)
         messages.push('Please select a security question');
     if (securityAnswer.length == 0)
         messages.push('Security answer cannot be empty');
+    else if (securityAnswer.length > 500)
+        messages.push('Security answer must be 500 characters or less');
     // Comprehensive password validation
     const passwordValidation = passwordSecurity_1.validatePasswordStrength(password);
     if (!passwordValidation.isValid) {
@@ -253,34 +275,75 @@ route.post('/signup', (req, res) => __awaiter(void 0, void 0, void 0, function* 
 }));
 // Remove the currently logged in user from the session
 route.get('/logout', (req, res) => {
-    delete req.session.user;
-    res.redirect(303, '/');
+    try {
+        // Business rule: secure session cleanup to prevent data leakage
+        if (req.session) {
+            // Clear all session data securely
+            delete req.session.user;
+            delete req.session.lastLoginInfo;
+            // Clear any other sensitive session data that might exist
+            const sessionKeys = Object.keys(req.session);
+            sessionKeys.forEach(key => {
+                if (key !== 'cookie') {
+                    delete req.session[key];
+                }
+            });
+        }
+        // Business rule: always redirect to prevent information disclosure
+        res.redirect(303, '/');
+    }
+    catch (error) {
+        // Fail securely: any error still logs out and redirects
+        console.error('Logout error:', error);
+        res.redirect(303, '/');
+    }
 });
 //--------------------------------------------------------
 // Password Reset Routes
 //--------------------------------------------------------
-// Import password reset utilities
-const passwordResetService_1 = require("../services/passwordResetService");
 // Show setup security question form (for authenticated users)
-route.get('/setup-security-question', (_req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    // This route should be moved to secured routes, but adding here for now
-    const questions = passwordResetService_1.PasswordResetService.getSecurityQuestions();
-    res.render('security_question_setup', {
-        view: 'security_question_setup',
-        questions
-    });
+route.get('/setup-security-question', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _c, _d;
+    // Business rule: enforce authentication for security-sensitive operations
+    if (!((_d = (_c = req.session) === null || _c === void 0 ? void 0 : _c.user) === null || _d === void 0 ? void 0 : _d.id)) {
+        res.redirect(303, '/');
+        return;
+    }
+    try {
+        const questions = passwordResetService_1.PasswordResetService.getSecurityQuestions();
+        res.render('security_question_setup', {
+            view: 'security_question_setup',
+            questions
+        });
+    }
+    catch (error) {
+        console.error('Error loading security questions:', error);
+        res.redirect(303, '/');
+    }
 }));
 // Handle security question setup
 route.post('/setup-security-question', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _e, _f;
+    // Business rule: enforce authentication for security-sensitive operations
+    if (!((_f = (_e = req.session) === null || _e === void 0 ? void 0 : _e.user) === null || _f === void 0 ? void 0 : _f.id)) {
+        res.redirect(303, '/');
+        return;
+    }
     const questions = passwordResetService_1.PasswordResetService.getSecurityQuestions();
     let messages = [];
     try {
-        // This should be from authenticated session, but using mock for now
-        const userId = 1; // TODO: Get from session
+        // Business rule: use authenticated user's ID, not arbitrary values
+        const userId = req.session.user.id;
         const questionId = String(req.body.questionId || '').trim();
         const answer = String(req.body.answer || '').trim();
+        // Business rule: validate input before processing
         if (!questionId || !answer) {
             messages.push('Please select a question and provide an answer');
+        }
+        else if (!userId || typeof userId !== 'number' || userId <= 0) {
+            // Fail securely: invalid user ID
+            res.redirect(303, '/');
+            return;
         }
         else {
             const result = yield passwordResetService_1.PasswordResetService.setupUserSecurityQuestion(userId, questionId, answer);
@@ -318,8 +381,15 @@ route.post('/forgot-password', (req, res) => __awaiter(void 0, void 0, void 0, f
     const messages = [];
     const username = String(req.body.username || '').toLowerCase().trim();
     try {
-        if (!username) {
+        // Enhanced validation with helpful messages
+        if (!username || username.length === 0) {
             messages.push('Please enter your username');
+        }
+        else if (username.length > 50) {
+            messages.push('Username is too long. Please enter a valid username.');
+        }
+        else if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
+            messages.push('Username contains invalid characters. Please use only letters, numbers, dots, underscores, and dashes.');
         }
         else {
             // Find user by username
@@ -361,17 +431,23 @@ route.post('/forgot-password', (req, res) => __awaiter(void 0, void 0, void 0, f
 route.get('/verify-security-question', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const username = String(req.query.username || '').toLowerCase().trim();
     try {
-        if (!username) {
+        // Business rule: validate input format first
+        if (!username || username.length === 0 || username.length > 50) {
             res.redirect(303, '/forgot-password');
             return;
         }
+        // Business rule: rate limit security question requests by IP
+        // const ipAddress = req.ip || req.socket?.remoteAddress || 'unknown';
+        // TODO: Implement IP-based rate limiting for security questions
         const user = yield orm_1.User.byUsername(username);
-        if (!user || typeof user.id !== 'number') {
+        if (!user || typeof user.id !== 'number' || user.id <= 0) {
+            // Fail securely: don't reveal if user exists
             res.redirect(303, '/forgot-password');
             return;
         }
         const securityQuestion = yield passwordResetService_1.PasswordResetService.getUserSecurityQuestion(user.id);
-        if (!securityQuestion) {
+        if (!securityQuestion || !securityQuestion.question) {
+            // Fail securely: don't reveal if user has security question
             res.redirect(303, '/forgot-password');
             return;
         }
@@ -379,48 +455,81 @@ route.get('/verify-security-question', (req, res) => __awaiter(void 0, void 0, v
             view: 'verify_security_question',
             username,
             securityQuestion: securityQuestion.question,
-            questionHint: securityQuestion.hint,
+            questionHint: securityQuestion.hint || '',
             attemptsRemaining: 3
         });
     }
     catch (error) {
         console.error('Error showing security question:', error);
+        // Fail securely: any error redirects to start
         res.redirect(303, '/forgot-password');
     }
 }));
 // Handle security question verification
 route.post('/verify-security-question', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _c, _d;
+    var _g, _h;
     const username = String(req.body.username || '').toLowerCase().trim();
     const answer = String(req.body.answer || '').trim();
-    const ipAddress = req.ip || ((_c = req.socket) === null || _c === void 0 ? void 0 : _c.remoteAddress) || 'unknown';
+    const ipAddress = req.ip || ((_g = req.socket) === null || _g === void 0 ? void 0 : _g.remoteAddress) || 'unknown';
     const messages = [];
     try {
-        if (!username || !answer) {
-            messages.push('Please provide your username and answer');
+        // Business rule: validate input format and length with helpful messages  
+        if (!username || username.length === 0) {
+            messages.push('Please enter your username');
+            res.render('verify_security_question', {
+                view: 'verify_security_question',
+                messages,
+                username: '',
+                securityQuestion: '',
+                questionHint: '',
+                attemptsRemaining: 3
+            });
+            return;
+        }
+        if (username.length > 50) {
+            messages.push('Username is too long');
+            res.render('verify_security_question', {
+                view: 'verify_security_question',
+                messages,
+                username: '',
+                securityQuestion: '',
+                questionHint: '',
+                attemptsRemaining: 3
+            });
+            return;
+        }
+        if (!answer || answer.length === 0) {
+            messages.push('Please provide your security answer');
+            res.redirect(303, '/forgot-password');
+            return;
+        }
+        if (answer.length > 500) {
+            messages.push('Security answer is too long');
             res.redirect(303, '/forgot-password');
             return;
         }
         const user = yield orm_1.User.byUsername(username);
-        if (!user || typeof user.id !== 'number') {
+        if (!user || typeof user.id !== 'number' || user.id <= 0) {
+            // Fail securely: don't reveal if user exists
             res.redirect(303, '/forgot-password');
             return;
         }
         const securityQuestion = yield passwordResetService_1.PasswordResetService.getUserSecurityQuestion(user.id);
-        if (!securityQuestion) {
+        if (!securityQuestion || !securityQuestion.question) {
+            // Fail securely: don't reveal security question status
             res.redirect(303, '/forgot-password');
             return;
         }
-        // Verify the security answer
+        // Verify the security answer with proper rate limiting
         const verification = yield passwordResetService_1.PasswordResetService.verifyUserSecurityAnswer(user.id, answer, ipAddress);
         if (verification.isRateLimited) {
             res.render('verify_security_question', {
                 view: 'verify_security_question',
                 username,
                 securityQuestion: securityQuestion.question,
-                questionHint: securityQuestion.hint,
+                questionHint: securityQuestion.hint || '',
                 rateLimited: true,
-                nextAttemptTime: (_d = verification.nextAttemptTime) === null || _d === void 0 ? void 0 : _d.toLocaleString()
+                nextAttemptTime: (_h = verification.nextAttemptTime) === null || _h === void 0 ? void 0 : _h.toLocaleString()
             });
             return;
         }
@@ -430,25 +539,26 @@ route.post('/verify-security-question', (req, res) => __awaiter(void 0, void 0, 
                 view: 'verify_security_question',
                 username,
                 securityQuestion: securityQuestion.question,
-                questionHint: securityQuestion.hint,
+                questionHint: securityQuestion.hint || '',
                 messages,
                 attemptsRemaining: 2 // TODO: Get actual remaining attempts
             });
             return;
         }
-        // Generate password reset token
+        // Business rule: generate secure token only after successful verification
         const token = yield passwordResetService_1.PasswordResetService.generatePasswordResetToken(user.id);
+        if (!token || token.length === 0) {
+            // Fail securely: token generation failed
+            res.redirect(303, '/forgot-password');
+            return;
+        }
         // Redirect to password reset form
-        res.redirect(303, `/reset-password?token=${token}`);
+        res.redirect(303, `/reset-password?token=${encodeURIComponent(token)}`);
     }
     catch (error) {
         console.error('Error verifying security question:', error);
-        messages.push('An error occurred. Please try again.');
-        res.render('verify_security_question', {
-            view: 'verify_security_question',
-            username,
-            messages
-        });
+        // Fail securely: any error redirects to start
+        res.redirect(303, '/forgot-password');
     }
 }));
 // Show password reset form

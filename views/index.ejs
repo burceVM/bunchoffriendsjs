@@ -2,15 +2,15 @@
 <div class="content">
     <p><a href="signup">Create a new account</a> or login below.</p>
     <form action="login" method="POST">
-        <%- include('messages') %>
+        <%- include('validation_messages') %>
         <p>
             <label>Username:
-                <input type="text" name="username" value="<%- locals.username || '' %>">
+                <input type="text" name="username" value="<%- locals.username || '' %>" maxlength="50" required>
             </label>
         </p>
         <p>
             <label>Password:
-                <input type="password" name="password" value="<%- locals.password || '' %>">
+                <input type="password" name="password" value="<%- locals.password || '' %>" maxlength="200" required>
             </label>
         </p>
         <p>

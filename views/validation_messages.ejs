@@ -1,0 +1,17 @@
+<%
+if (locals.messages) {
+    %>
+        <div class="validation-messages">
+            <ul>
+                <%
+                    for (let message of locals.messages) {
+                        %>
+                        <li class="validation-error"><%- message %></li>
+                        <%
+                    }
+                %>
+            </ul>
+        </div>
+    <%
+}
+%>
