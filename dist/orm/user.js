@@ -30,7 +30,7 @@ class User {
     constructor(username, // Login name
     passwordHash, // Bcrypt salted hash of password
     fullName, // Display name for the user interface
-    role, // Role of the user (e.g., 'user', 'admin')
+    role, // Role of the user (e.g., 'normie', 'moderator', 'admin')
     id) {
         this.username = username;
         this.passwordHash = passwordHash;

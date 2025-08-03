@@ -1,90 +1,146 @@
 import { Request, Response, NextFunction } from 'express';
+import { AuthorizationService, UserRole, Permission, AuthResult } from '../services/authorizationService';
 
+/**
+ * Extended Request interface to include auth context
+ */
+export interface AuthenticatedRequest extends Request {
+    auth: AuthResult;
+}
+
+/**
+ * Enhanced middleware using centralized authorization service
+ */
+
+/**
+ * Require authentication - redirects to home if not authenticated
+ */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
     try {
-        // Fail securely: deny access if session is undefined, null, or malformed
-        if (!req.session || 
-            req.session === null || 
-            typeof req.session !== 'object' || 
-            !req.session.user || 
-            req.session.user === null ||
-            typeof req.session.user !== 'object') {
-            res.redirect(303, '/');
-            return;
-        }
-
-        // Additional validation: ensure user object has required properties
-        if (!req.session.user.id || 
-            !req.session.user.username || 
-            typeof req.session.user.id !== 'number' ||
-            typeof req.session.user.username !== 'string') {
-            // Session appears corrupted or invalid, clear it and redirect
-            req.session.user = undefined;
-            res.redirect(303, '/');
-            return;
-        }
-
+        AuthorizationService.requireAuth(req);
         next();
     } catch (error) {
-        // Fail securely: any exception in authentication check denies access
-        console.error('Authentication error:', error);
+        console.error('Authentication required:', error);
         res.redirect(303, '/');
         return;
     }
 }
 
+/**
+ * Require specific roles - returns 403 if unauthorized
+ */
 export function allowRoles(...allowedRoles: string[]): (req: Request, res: Response, next: NextFunction) => void {
     return function (req: Request, res: Response, next: NextFunction): void {
         try {
-            // Fail securely: deny access if no roles specified
-            if (!allowedRoles || allowedRoles.length === 0) {
-                res.status(403).send('Forbidden');
-                return;
-            }
+            // Convert string roles to UserRole enum
+            const roles = allowedRoles.map(role => {
+                switch (role.toLowerCase()) {
+                case 'admin':
+                    return UserRole.ADMIN;
+                case 'moderator':
+                    return UserRole.MODERATOR;
+                case 'normie':
+                case 'user': // Support legacy 'user' role
+                    return UserRole.NORMIE;
+                default:
+                    return UserRole.NORMIE;
+                }
+            });
 
-            // Fail securely: comprehensive session and user validation
-            if (!req.session || 
-                req.session === null || 
-                typeof req.session !== 'object' || 
-                !req.session.user || 
-                req.session.user === null ||
-                typeof req.session.user !== 'object') {
-                res.status(403).send('Forbidden');
-                return;
-            }
-
-            // Fail securely: validate user role property exists and is valid
-            if (!req.session.user.role || 
-                typeof req.session.user.role !== 'string' ||
-                req.session.user.role.trim() === '') {
-                res.status(403).send('Forbidden');
-                return;
-            }
-
-            // Normalize role comparison (trim whitespace, case insensitive)
-            const userRole = req.session.user.role.trim().toLowerCase();
-            const normalizedAllowedRoles = allowedRoles.map(role => 
-                typeof role === 'string' ? role.trim().toLowerCase() : ''
-            ).filter(role => role !== '');
-
-            // Fail securely: deny if no valid roles after normalization
-            if (normalizedAllowedRoles.length === 0) {
-                res.status(403).send('Forbidden');
-                return;
-            }
-
-            // Check if user role is in allowed roles
-            if (!normalizedAllowedRoles.includes(userRole)) {
-                res.status(403).send('Forbidden');
-                return;
-            }
-
+            AuthorizationService.requireRole(req, roles);
             next();
         } catch (error) {
-            // Fail securely: any exception in role check denies access
-            console.error('Role authorization error:', error);
+            console.error('Role authorization failed:', error);
             res.status(403).send('Forbidden');
             return;
         }
     };
+}
+
+/**
+ * Require specific permission - returns 403 if unauthorized
+ */
+export function requirePermission(permission: Permission): (req: Request, res: Response, next: NextFunction) => void {
+    return function (req: Request, res: Response, next: NextFunction): void {
+        try {
+            AuthorizationService.requirePermission(req, permission);
+            next();
+        } catch (error) {
+            console.error('Permission authorization failed:', error);
+            res.status(403).send('Forbidden');
+            return;
+        }
+    };
+}
+
+/**
+ * Require resource ownership or elevated permissions
+ */
+export function requireResourceAccess(getResourceOwnerId: (req: Request) => number | undefined): (req: Request, res: Response, next: NextFunction) => void {
+    return function (req: Request, res: Response, next: NextFunction): void {
+        try {
+            const resourceOwnerId = getResourceOwnerId(req);
+            
+            if (!AuthorizationService.canAccessResource(req, resourceOwnerId)) {
+                res.status(403).send('Forbidden');
+                return;
+            }
+            
+            next();
+        } catch (error) {
+            console.error('Resource access authorization failed:', error);
+            res.status(403).send('Forbidden');
+            return;
+        }
+    };
+}
+
+/**
+ * Admin only access
+ */
+export function adminOnly(req: Request, res: Response, next: NextFunction): void {
+    try {
+        AuthorizationService.requireRole(req, UserRole.ADMIN);
+        next();
+    } catch (error) {
+        console.error('Admin authorization failed:', error);
+        res.status(403).send('Forbidden');
+        return;
+    }
+}
+
+/**
+ * Moderator or admin access
+ */
+export function moderatorOrAdmin(req: Request, res: Response, next: NextFunction): void {
+    try {
+        AuthorizationService.requireRole(req, [UserRole.MODERATOR, UserRole.ADMIN]);
+        next();
+    } catch (error) {
+        console.error('Moderator authorization failed:', error);
+        res.status(403).send('Forbidden');
+        return;
+    }
+}
+
+/**
+ * Optional authentication - doesn't fail if not authenticated, but provides auth context
+ */
+export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
+    try {
+        // Attach auth context to request for use in routes
+        (req as AuthenticatedRequest).auth = AuthorizationService.authorize(req);
+        next();
+    } catch (error) {
+        console.error('Optional auth error:', error);
+        // Provide guest context on error
+        (req as AuthenticatedRequest).auth = {
+            isAuthenticated: false,
+            role: UserRole.GUEST,
+            hasPermission: () => false,
+            hasRole: () => false,
+            canAccessResource: () => false
+        };
+        next();
+    }
 }

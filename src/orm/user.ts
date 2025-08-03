@@ -20,7 +20,7 @@ export default class User {
         public username: string,     // Login name
         public passwordHash: string, // Bcrypt salted hash of password
         public fullName: string,     // Display name for the user interface
-        public role: string,         // Role of the user (e.g., 'user', 'admin')
+        public role: string,         // Role of the user (e.g., 'normie', 'moderator', 'admin')
         public id?: number) {        // Unique identifier for the user
     }
 
