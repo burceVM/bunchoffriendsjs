@@ -111,6 +111,26 @@ class User {
             }
         });
     }
+    // Find the unique user with a matching username
+    // returns null if there is no such user
+    static byUsername(username) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                if (!username || typeof username !== 'string') {
+                    return null;
+                }
+                const users = yield User.byWhere(`username = '${username.replace(/'/g, '\'\'')}'`);
+                if (users.length > 0)
+                    return users[0];
+                else
+                    return null;
+            }
+            catch (error) {
+                console.error('Error finding user by username:', error);
+                return null;
+            }
+        });
+    }
     // Change the password for this user with secure hashing
     changePassword(newPassword) {
         return __awaiter(this, void 0, void 0, function* () {

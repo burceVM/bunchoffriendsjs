@@ -23,5 +23,19 @@ import Post from './post';
 import User from './user';
 import Friend from './friend';
 import raw from './raw';
+import UserSecurityQuestion from './securityQuestion';
+import SecurityQuestionAttempt from './securityQuestionAttempt';
+import PasswordResetToken from './passwordResetToken';
+import LoginAttempt from './loginAttempt';
 
-export { initialize, raw, User, Friend, Post };
+export { 
+    initialize, 
+    raw, 
+    User, 
+    Friend, 
+    Post,
+    UserSecurityQuestion,
+    SecurityQuestionAttempt,
+    PasswordResetToken,
+    LoginAttempt
+};

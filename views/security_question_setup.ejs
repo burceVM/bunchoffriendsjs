@@ -1,0 +1,220 @@
+<%- include('header_guest') %>
+<div class="content">
+    <h1>Setup Security Question</h1>
+    
+    <p>To enable password recovery, please set up a security question. Choose a question that has a sufficiently random answer that only you would know.</p>
+    
+    <div class="security-info">
+        <h3>Security Requirements:</h3>
+        <ul>
+            <li>Answers should be specific and not easily guessable</li>
+            <li>Avoid common answers that others might use</li>
+            <li>Some questions require numbers for additional security</li>
+            <li>Your answer will be stored securely using encryption</li>
+        </ul>
+    </div>
+
+    <form action="/setup-security-question" method="POST" class="security-question-form">
+        <% if (locals.messages && locals.messages.length > 0) { %>
+            <ul class="error-messages">
+                <% for (let message of locals.messages) { %>
+                    <li><%= message %></li>
+                <% } %>
+            </ul>
+        <% } %>
+
+        <div class="form-group">
+            <label for="question">Security Question:</label>
+            <select name="questionId" id="question" required>
+                <option value="">Select a security question...</option>
+                <% for (let question of locals.questions || []) { %>
+                    <option value="<%= question.id %>" <%= locals.selectedQuestionId === question.id ? 'selected' : '' %>>
+                        <%= question.question %>
+                    </option>
+                <% } %>
+            </select>
+        </div>
+
+        <div class="form-group question-hint" id="question-hint" style="display: none;">
+            <div class="hint-content">
+                <strong>Hint:</strong> <span id="hint-text"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="answer">Your Answer:</label>
+            <input type="text" name="answer" id="answer" required maxlength="50" 
+                   value="<%= locals.answer || '' %>" 
+                   placeholder="Enter your answer (case insensitive)">
+            <div class="answer-requirements" id="answer-requirements" style="display: none;">
+                <span id="length-req">Length: <span id="min-length">0</span>-<span id="max-length">0</span> characters</span>
+                <span id="numeric-req" style="display: none;">Must include numbers</span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit">Setup Security Question</button>
+            <a href="/home" class="cancel-link">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+// Security questions data
+const questionsData = JSON.stringify(locals.questions || []);
+
+document.addEventListener('DOMContentLoaded', function() {
+    const questionSelect = document.getElementById('question');
+    const questionHint = document.getElementById('question-hint');
+    const hintText = document.getElementById('hint-text');
+    const answerRequirements = document.getElementById('answer-requirements');
+    const lengthReq = document.getElementById('length-req');
+    const minLength = document.getElementById('min-length');
+    const maxLength = document.getElementById('max-length');
+    const numericReq = document.getElementById('numeric-req');
+    const answerInput = document.getElementById('answer');
+
+    questionSelect.addEventListener('change', function() {
+        const selectedQuestionId = this.value;
+        const selectedQuestion = questionsData.find(q => q.id === selectedQuestionId);
+
+        if (selectedQuestion) {
+            // Show hint
+            if (selectedQuestion.hint) {
+                hintText.textContent = selectedQuestion.hint;
+                questionHint.style.display = 'block';
+            } else {
+                questionHint.style.display = 'none';
+            }
+
+            // Show requirements
+            minLength.textContent = selectedQuestion.minAnswerLength;
+            maxLength.textContent = selectedQuestion.maxAnswerLength;
+            answerInput.setAttribute('minlength', selectedQuestion.minAnswerLength);
+            answerInput.setAttribute('maxlength', selectedQuestion.maxAnswerLength);
+            
+            if (selectedQuestion.requiresNumeric) {
+                numericReq.style.display = 'inline';
+            } else {
+                numericReq.style.display = 'none';
+            }
+            
+            answerRequirements.style.display = 'block';
+        } else {
+            questionHint.style.display = 'none';
+            answerRequirements.style.display = 'none';
+        }
+    });
+
+    // Trigger change event if a question is pre-selected
+    if (questionSelect.value) {
+        questionSelect.dispatchEvent(new Event('change'));
+    }
+});
+</script>
+
+<style>
+.security-question-form {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.security-info {
+    background: #f0f8ff;
+    border: 1px solid #b0d4f1;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.security-info h3 {
+    margin-top: 0;
+    color: #2c5aa0;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.form-group select,
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.question-hint {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.hint-content {
+    font-size: 14px;
+    color: #856404;
+}
+
+.answer-requirements {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #666;
+}
+
+.answer-requirements span {
+    display: inline-block;
+    margin-right: 15px;
+}
+
+.form-actions {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.form-actions button {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-right: 15px;
+}
+
+.form-actions button:hover {
+    background: #0056b3;
+}
+
+.cancel-link {
+    color: #6c757d;
+    text-decoration: none;
+    padding: 12px 30px;
+}
+
+.cancel-link:hover {
+    text-decoration: underline;
+}
+
+.error-messages {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+    list-style: none;
+}
+
+.error-messages li {
+    color: #721c24;
+    margin-bottom: 5px;
+}
+</style>

@@ -12,7 +12,8 @@ import alasql from 'alasql';
 import User from './user';
 import Friend from './friend';
 import Post from './post';
-import { initializeLoginTracking } from '../utils/accountLockout';
+import { AccountLockoutService } from '../services/accountLockoutService';
+import { PasswordResetService } from '../services/passwordResetService';
 
 // Initialize the database with a schema and sample data
 // Run once on system startup
@@ -46,9 +47,9 @@ export default async function initialize(): Promise<void> {
     );
 
     // Populate the database with sample data using secure password hashing
-    await User.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
+    const max = await User.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
 
-    await User.createUser('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');
+    const malcolm = await User.createUser('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');
 
     const carol = await User.createUser('carol', 'password', 'Carol', 'normie');
     const mike = await User.createUser('mike', 'qwerty', 'Mike', 'normie');
@@ -113,5 +114,53 @@ export default async function initialize(): Promise<void> {
     await new Post(cindy, 'I have just heard an amazing secret', new Date('2020-1-11 13:11:00'), 0).create();
     
     // Initialize login attempt tracking for account lockout functionality
-    await initializeLoginTracking();
+    await AccountLockoutService.initializeTables();
+    
+    // Initialize password reset functionality with security questions
+    await PasswordResetService.initializeTables();
+    
+    // Set up security questions for all users
+    console.log('Setting up security questions for all users...');
+    
+    // Admin and moderator users
+    if (max.id !== undefined) {
+        await PasswordResetService.setupUserSecurityQuestion(max.id, 'first_pet_name', 'Buddy');
+    }
+    if (malcolm.id !== undefined) {
+        await PasswordResetService.setupUserSecurityQuestion(malcolm.id, 'favorite_food', 'Pizza');
+    }
+    
+    // Regular users with diverse security questions
+    if (carol.id !== undefined) {
+        await PasswordResetService.setupUserSecurityQuestion(carol.id, 'childhood_hero', 'Wonder Woman');
+    }
+    if (mike.id !== undefined) {
+        await PasswordResetService.setupUserSecurityQuestion(mike.id, 'first_pet_name', 'Tiger');
+    }
+    if (alice.id !== undefined) {
+        await PasswordResetService.setupUserSecurityQuestion(alice.id, 'favorite_food', 'Chocolate');
+    }
+    if (sam.id !== undefined) {
+        await PasswordResetService.setupUserSecurityQuestion(sam.id, 'childhood_phone_last_four', '5678');
+    }
+    if (greg.id !== undefined) {
+        await PasswordResetService.setupUserSecurityQuestion(greg.id, 'childhood_hero', 'Superman');
+    }
+    if (peter.id !== undefined) {
+        await PasswordResetService.setupUserSecurityQuestion(peter.id, 'college_not_attended', 'Harvard University');
+    }
+    if (bobby.id !== undefined) {
+        await PasswordResetService.setupUserSecurityQuestion(bobby.id, 'first_pet_name', 'Fluffy');
+    }
+    if (marcia.id !== undefined) {
+        await PasswordResetService.setupUserSecurityQuestion(marcia.id, 'favorite_food', 'Strawberries');
+    }
+    if (jan.id !== undefined) {
+        await PasswordResetService.setupUserSecurityQuestion(jan.id, 'childhood_hero', 'Nancy Drew');
+    }
+    if (cindy.id !== undefined) {
+        await PasswordResetService.setupUserSecurityQuestion(cindy.id, 'childhood_phone_last_four', '1234');
+    }
+    
+    console.log('Security questions setup completed for all users.');
 }

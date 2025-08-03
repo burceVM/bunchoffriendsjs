@@ -87,6 +87,22 @@ pre {
   color: #666;
 }
 
+/* Security Question Styles */
+.security-hint {
+  background-color: #e8f4f8;
+  border: 1px solid #bee5eb;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #0c5460;
+}
+
+.security-hint small {
+  display: block;
+  margin: 2px 0;
+}
+
 /* Admin Panel Styles */
 .admin-section {
   margin: 20px 0;

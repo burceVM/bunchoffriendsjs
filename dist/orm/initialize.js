@@ -25,7 +25,8 @@ const alasql_1 = __importDefault(require("alasql"));
 const user_1 = __importDefault(require("./user"));
 const friend_1 = __importDefault(require("./friend"));
 const post_1 = __importDefault(require("./post"));
-const accountLockout_1 = require("../utils/accountLockout");
+const accountLockoutService_1 = require("../services/accountLockoutService");
+const passwordResetService_1 = require("../services/passwordResetService");
 // Initialize the database with a schema and sample data
 // Run once on system startup
 function initialize() {
@@ -56,8 +57,8 @@ function initialize() {
             constraint creator_fk foreign key (creator) references users(id)
         )`);
         // Populate the database with sample data using secure password hashing
-        yield user_1.default.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
-        yield user_1.default.createUser('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');
+        const max = yield user_1.default.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
+        const malcolm = yield user_1.default.createUser('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');
         const carol = yield user_1.default.createUser('carol', 'password', 'Carol', 'normie');
         const mike = yield user_1.default.createUser('mike', 'qwerty', 'Mike', 'normie');
         const alice = yield user_1.default.createUser('alice', '123456', 'Alice', 'normie');
@@ -116,7 +117,50 @@ function initialize() {
         yield new post_1.default(jan, 'Feeling low', new Date('2020-1-8 09:15:00'), 0).create();
         yield new post_1.default(cindy, 'I have just heard an amazing secret', new Date('2020-1-11 13:11:00'), 0).create();
         // Initialize login attempt tracking for account lockout functionality
-        yield accountLockout_1.initializeLoginTracking();
+        yield accountLockoutService_1.AccountLockoutService.initializeTables();
+        // Initialize password reset functionality with security questions
+        yield passwordResetService_1.PasswordResetService.initializeTables();
+        // Set up security questions for all users
+        console.log('Setting up security questions for all users...');
+        // Admin and moderator users
+        if (max.id !== undefined) {
+            yield passwordResetService_1.PasswordResetService.setupUserSecurityQuestion(max.id, 'first_pet_name', 'Buddy');
+        }
+        if (malcolm.id !== undefined) {
+            yield passwordResetService_1.PasswordResetService.setupUserSecurityQuestion(malcolm.id, 'favorite_food', 'Pizza');
+        }
+        // Regular users with diverse security questions
+        if (carol.id !== undefined) {
+            yield passwordResetService_1.PasswordResetService.setupUserSecurityQuestion(carol.id, 'childhood_hero', 'Wonder Woman');
+        }
+        if (mike.id !== undefined) {
+            yield passwordResetService_1.PasswordResetService.setupUserSecurityQuestion(mike.id, 'first_pet_name', 'Tiger');
+        }
+        if (alice.id !== undefined) {
+            yield passwordResetService_1.PasswordResetService.setupUserSecurityQuestion(alice.id, 'favorite_food', 'Chocolate');
+        }
+        if (sam.id !== undefined) {
+            yield passwordResetService_1.PasswordResetService.setupUserSecurityQuestion(sam.id, 'childhood_phone_last_four', '5678');
+        }
+        if (greg.id !== undefined) {
+            yield passwordResetService_1.PasswordResetService.setupUserSecurityQuestion(greg.id, 'childhood_hero', 'Superman');
+        }
+        if (peter.id !== undefined) {
+            yield passwordResetService_1.PasswordResetService.setupUserSecurityQuestion(peter.id, 'college_not_attended', 'Harvard University');
+        }
+        if (bobby.id !== undefined) {
+            yield passwordResetService_1.PasswordResetService.setupUserSecurityQuestion(bobby.id, 'first_pet_name', 'Fluffy');
+        }
+        if (marcia.id !== undefined) {
+            yield passwordResetService_1.PasswordResetService.setupUserSecurityQuestion(marcia.id, 'favorite_food', 'Strawberries');
+        }
+        if (jan.id !== undefined) {
+            yield passwordResetService_1.PasswordResetService.setupUserSecurityQuestion(jan.id, 'childhood_hero', 'Nancy Drew');
+        }
+        if (cindy.id !== undefined) {
+            yield passwordResetService_1.PasswordResetService.setupUserSecurityQuestion(cindy.id, 'childhood_phone_last_four', '1234');
+        }
+        console.log('Security questions setup completed for all users.');
     });
 }
 exports.default = initialize;

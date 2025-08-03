@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Post = exports.Friend = exports.User = exports.raw = exports.initialize = void 0;
+exports.LoginAttempt = exports.PasswordResetToken = exports.SecurityQuestionAttempt = exports.UserSecurityQuestion = exports.Post = exports.Friend = exports.User = exports.raw = exports.initialize = void 0;
 //--------------------------------------------------------
 // A terribly insecure persistence layer
 // The API is inspired by simple ORM frameworks
@@ -32,4 +32,12 @@ const friend_1 = __importDefault(require("./friend"));
 exports.Friend = friend_1.default;
 const raw_1 = __importDefault(require("./raw"));
 exports.raw = raw_1.default;
+const securityQuestion_1 = __importDefault(require("./securityQuestion"));
+exports.UserSecurityQuestion = securityQuestion_1.default;
+const securityQuestionAttempt_1 = __importDefault(require("./securityQuestionAttempt"));
+exports.SecurityQuestionAttempt = securityQuestionAttempt_1.default;
+const passwordResetToken_1 = __importDefault(require("./passwordResetToken"));
+exports.PasswordResetToken = passwordResetToken_1.default;
+const loginAttempt_1 = __importDefault(require("./loginAttempt"));
+exports.LoginAttempt = loginAttempt_1.default;
 //# sourceMappingURL=index.js.map

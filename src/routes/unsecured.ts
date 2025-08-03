@@ -11,7 +11,7 @@
 import Router from 'express-promise-router';
 import { User, Post, raw } from '../orm';
 import { requireAuth, allowRoles } from '../middleware/auth';
-import { getLockoutStatistics } from '../utils/accountLockout';
+import { AccountLockoutService } from '../services/accountLockoutService';
 const route = Router();
 
 //--------------------------------------------------------
@@ -258,7 +258,7 @@ route.post('/admin', allowRoles('admin'), async (req, res) => {
 route.get('/admin/lockout-stats', allowRoles('admin'), async (req, res) => {
     try {
         const hoursBack = Number(req.query.hours) || 24;
-        const stats = await getLockoutStatistics(hoursBack);
+        const stats = await AccountLockoutService.getLockoutStatistics(hoursBack);
         
         res.json({
             success: true,

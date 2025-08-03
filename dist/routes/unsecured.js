@@ -24,7 +24,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_promise_router_1 = __importDefault(require("express-promise-router"));
 const orm_1 = require("../orm");
 const auth_1 = require("../middleware/auth");
-const accountLockout_1 = require("../utils/accountLockout");
+const accountLockoutService_1 = require("../services/accountLockoutService");
 const route = express_promise_router_1.default();
 //--------------------------------------------------------
 // Routes that require authentication
@@ -246,7 +246,7 @@ route.post('/admin', auth_1.allowRoles('admin'), (req, res) => __awaiter(void 0,
 route.get('/admin/lockout-stats', auth_1.allowRoles('admin'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const hoursBack = Number(req.query.hours) || 24;
-        const stats = yield accountLockout_1.getLockoutStatistics(hoursBack);
+        const stats = yield accountLockoutService_1.AccountLockoutService.getLockoutStatistics(hoursBack);
         res.json({
             success: true,
             timeframe: `${hoursBack} hours`,

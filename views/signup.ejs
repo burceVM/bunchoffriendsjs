@@ -30,6 +30,49 @@
                 <input type="text" name="fullName" value="<%- locals.fullName || '' %>">
             </label>
         </p>
+        
+        <% if (locals.securityQuestions) { %>
+        <h3>Security Question Setup</h3>
+        <p>Please select a security question and provide an answer. This will be used to help recover your account if you forget your password.</p>
+        <p>
+            <label>Security Question:
+                <select name="securityQuestionId" required>
+                    <option value="">-- Select a Security Question --</option>
+                    <% securityQuestions.forEach(function(question) { %>
+                        <option value="<%= question.id %>" <%= (locals.securityQuestionId === question.id) ? 'selected' : '' %>>
+                            <%= question.question %>
+                        </option>
+                    <% }); %>
+                </select>
+            </label>
+        </p>
+        <p>
+            <label>Security Answer:
+                <input type="text" name="securityAnswer" value="<%- locals.securityAnswer || '' %>" placeholder="Enter your answer" required>
+            </label>
+        </p>
+        <% if (locals.securityQuestionId) { %>
+            <% const selectedQuestion = securityQuestions.find(q => q.id === locals.securityQuestionId); %>
+            <% if (selectedQuestion && selectedQuestion.hint) { %>
+            <div class="security-hint">
+                <small><strong>Hint:</strong> <%= selectedQuestion.hint %></small>
+                <% if (selectedQuestion.requiresNumeric) { %>
+                    <br><small><strong>Note:</strong> This answer must contain at least one number.</small>
+                <% } %>
+                <% if (selectedQuestion.minAnswerLength || selectedQuestion.maxAnswerLength) { %>
+                    <br><small><strong>Length:</strong> 
+                    <% if (selectedQuestion.minAnswerLength === selectedQuestion.maxAnswerLength) { %>
+                        Exactly <%= selectedQuestion.minAnswerLength %> characters
+                    <% } else { %>
+                        <%= selectedQuestion.minAnswerLength %>-<%= selectedQuestion.maxAnswerLength %> characters
+                    <% } %>
+                    </small>
+                <% } %>
+            </div>
+            <% } %>
+        <% } %>
+        <% } %>
+        
         <p>
             <input type="submit" value="Sign Up Now">
             or <a href="/">return to the home page.</a>
@@ -37,3 +80,49 @@
     </form>
 </div>
 <script src="/static/password-validator.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const securityQuestionSelect = document.querySelector('select[name="securityQuestionId"]');
+    const securityAnswerInput = document.querySelector('input[name="securityAnswer"]');
+    
+    if (securityQuestionSelect && securityAnswerInput) {
+        securityQuestionSelect.addEventListener('change', function() {
+            const selectedQuestionId = this.value;
+            const questions = JSON.stringify(locals.securityQuestions || []);
+            const selectedQuestion = questions.find(q => q.id === selectedQuestionId);
+            
+            // Update placeholder and requirements
+            if (selectedQuestion) {
+                securityAnswerInput.placeholder = selectedQuestion.hint || 'Enter your answer';
+                
+                // Update answer field attributes based on question requirements
+                if (selectedQuestion.requiresNumeric) {
+                    securityAnswerInput.setAttribute('pattern', '.*\\d.*');
+                    securityAnswerInput.title = 'Answer must contain at least one number';
+                } else {
+                    securityAnswerInput.removeAttribute('pattern');
+                    securityAnswerInput.title = '';
+                }
+                
+                if (selectedQuestion.minAnswerLength) {
+                    securityAnswerInput.setAttribute('minlength', selectedQuestion.minAnswerLength);
+                }
+                if (selectedQuestion.maxAnswerLength) {
+                    securityAnswerInput.setAttribute('maxlength', selectedQuestion.maxAnswerLength);
+                }
+            } else {
+                securityAnswerInput.placeholder = 'Enter your answer';
+                securityAnswerInput.removeAttribute('pattern');
+                securityAnswerInput.removeAttribute('minlength');
+                securityAnswerInput.removeAttribute('maxlength');
+                securityAnswerInput.title = '';
+            }
+        });
+        
+        // Trigger change event if there's already a selected question
+        if (securityQuestionSelect.value) {
+            securityQuestionSelect.dispatchEvent(new Event('change'));
+        }
+    }
+});
+</script>

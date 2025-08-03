@@ -103,6 +103,25 @@ export default class User {
         }
     }
 
+    // Find the unique user with a matching username
+    // returns null if there is no such user
+    static async byUsername(username: string): Promise<User | null> {
+        try {
+            if (!username || typeof username !== 'string') {
+                return null;
+            }
+            
+            const users = await User.byWhere(`username = '${username.replace(/'/g, '\'\'')}'`);
+            if (users.length > 0)
+                return users[0];
+            else
+                return null;
+        } catch (error) {
+            console.error('Error finding user by username:', error);
+            return null;
+        }
+    }
+
     // Change the password for this user with secure hashing
     async changePassword(newPassword: string): Promise<void> {
         try {
