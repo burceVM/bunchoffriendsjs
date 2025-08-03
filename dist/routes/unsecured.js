@@ -26,6 +26,7 @@ const orm_1 = require("../orm");
 const auth_1 = require("../middleware/auth");
 const accountLockoutService_1 = require("../services/accountLockoutService");
 const userManagementLog_1 = __importDefault(require("../orm/userManagementLog"));
+const accessDenialLog_1 = __importDefault(require("../orm/accessDenialLog"));
 const route = express_promise_router_1.default();
 //--------------------------------------------------------
 // Routes that require authentication
@@ -275,6 +276,22 @@ route.get('/admin/user-management-logs', auth_1.allowRoles('admin'), (_, res) =>
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve user management logs'
+        });
+    }
+}));
+route.get('/admin/access-denial-logs', auth_1.allowRoles('admin'), (_, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const logs = yield accessDenialLog_1.default.getRecent(100);
+        res.json({
+            success: true,
+            logs
+        });
+    }
+    catch (error) {
+        console.error('Error retrieving access denial logs:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve access denial logs'
         });
     }
 }));

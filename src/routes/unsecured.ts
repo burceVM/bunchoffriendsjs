@@ -13,6 +13,7 @@ import { User, Post, raw } from '../orm';
 import { requireAuth, allowRoles } from '../middleware/auth';
 import { AccountLockoutService } from '../services/accountLockoutService';
 import UserManagementLog from '../orm/userManagementLog';
+import AccessDenialLog from '../orm/accessDenialLog';
 const route = Router();
 
 //--------------------------------------------------------
@@ -287,6 +288,22 @@ route.get('/admin/user-management-logs', allowRoles('admin'), async (_, res) => 
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve user management logs'
+        });
+    }
+});
+
+route.get('/admin/access-denial-logs', allowRoles('admin'), async (_, res) => {
+    try {
+        const logs = await AccessDenialLog.getRecent(100);
+        res.json({
+            success: true,
+            logs
+        });
+    } catch (error) {
+        console.error('Error retrieving access denial logs:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve access denial logs'
         });
     }
 });

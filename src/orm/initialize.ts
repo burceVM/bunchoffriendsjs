@@ -18,6 +18,7 @@ import { PasswordResetService } from '../services/passwordResetService';
 import UserManagementLog from './userManagementLog';
 import { ReauthenticationService } from '../services/reauthenticationService';
 import { LoginTrackingService } from '../services/loginTrackingService';
+import AccessDenialLog from './accessDenialLog';
 
 // Initialize the database with a schema and sample data
 // Run once on system startup
@@ -57,6 +58,7 @@ export default async function initialize(): Promise<void> {
     await UserManagementLog.initializeTable();
     await ReauthenticationService.initializeReauthTable();
     await LoginTrackingService.initializeTable();
+    await AccessDenialLog.initializeTable();
 
     // Populate the database with sample data using secure password hashing
     const max = await User.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
@@ -218,7 +220,6 @@ export default async function initialize(): Promise<void> {
     await new Friend(bobby, mike).create();
     await new Friend(alice, sam).create();
     await new Friend(sam, alice).create();
-
 
     await new Post(mike, 'It has been a busy week', new Date('2020-1-2 09:00:00'), 5).create();
     await new Post(mike, 'Finished designs for new building.', new Date('2020-1-4 16:15:00'), 2).create();

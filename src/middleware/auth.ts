@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthorizationService, UserRole, Permission, AuthResult } from '../services/authorizationService';
+import AccessDenialLog from '../orm/accessDenialLog';
 
 /**
  * Extended Request interface to include auth context
@@ -17,10 +18,30 @@ export interface AuthenticatedRequest extends Request {
  */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
     try {
-        AuthorizationService.requireAuth(req);
+        if (!req.session || !req.session.user) {
+            // Log access denial
+            const log = new AccessDenialLog(
+                null,
+                null,
+                'No valid session/user',
+                req.originalUrl,
+                req.ip || req.socket?.remoteAddress || 'unknown'
+            );
+            log.create();
+            res.redirect(303, '/');
+            return;
+        }
         next();
     } catch (error) {
-        console.error('Authentication required:', error);
+        // Log access denial
+        const log = new AccessDenialLog(
+            req.session?.user?.id || null,
+            req.session?.user?.username || null,
+            'Exception in authentication check',
+            req.originalUrl,
+            req.ip || req.socket?.remoteAddress || 'unknown'
+        );
+        log.create();
         res.redirect(303, '/');
         return;
     }
@@ -50,7 +71,15 @@ export function allowRoles(...allowedRoles: string[]): (req: Request, res: Respo
             AuthorizationService.requireRole(req, roles);
             next();
         } catch (error) {
-            console.error('Role authorization failed:', error);
+            // Log access denial
+            const log = new AccessDenialLog(
+                req.session?.user?.id || null,
+                req.session?.user?.username || null,
+                `Role authorization failed: ${error instanceof Error ? error.message : String(error)}`,
+                req.originalUrl,
+                req.ip || req.socket?.remoteAddress || 'unknown'
+            );
+            log.create();
             res.status(403).send('Forbidden');
             return;
         }
@@ -66,7 +95,15 @@ export function requirePermission(permission: Permission): (req: Request, res: R
             AuthorizationService.requirePermission(req, permission);
             next();
         } catch (error) {
-            console.error('Permission authorization failed:', error);
+            // Log access denial
+            const log = new AccessDenialLog(
+                req.session?.user?.id || null,
+                req.session?.user?.username || null,
+                `Permission denied: ${permission}`,
+                req.originalUrl,
+                req.ip || req.socket?.remoteAddress || 'unknown'
+            );
+            log.create();
             res.status(403).send('Forbidden');
             return;
         }
@@ -80,15 +117,30 @@ export function requireResourceAccess(getResourceOwnerId: (req: Request) => numb
     return function (req: Request, res: Response, next: NextFunction): void {
         try {
             const resourceOwnerId = getResourceOwnerId(req);
-            
             if (!AuthorizationService.canAccessResource(req, resourceOwnerId)) {
+                // Log access denial
+                const log = new AccessDenialLog(
+                    req.session?.user?.id || null,
+                    req.session?.user?.username || null,
+                    'Resource access denied',
+                    req.originalUrl,
+                    req.ip || req.socket?.remoteAddress || 'unknown'
+                );
+                log.create();
                 res.status(403).send('Forbidden');
                 return;
             }
-            
             next();
         } catch (error) {
-            console.error('Resource access authorization failed:', error);
+            // Log access denial
+            const log = new AccessDenialLog(
+                req.session?.user?.id || null,
+                req.session?.user?.username || null,
+                'Exception in resource access check',
+                req.originalUrl,
+                req.ip || req.socket?.remoteAddress || 'unknown'
+            );
+            log.create();
             res.status(403).send('Forbidden');
             return;
         }
@@ -103,7 +155,15 @@ export function adminOnly(req: Request, res: Response, next: NextFunction): void
         AuthorizationService.requireRole(req, UserRole.ADMIN);
         next();
     } catch (error) {
-        console.error('Admin authorization failed:', error);
+        // Log access denial
+        const log = new AccessDenialLog(
+            req.session?.user?.id || null,
+            req.session?.user?.username || null,
+            'Admin authorization failed',
+            req.originalUrl,
+            req.ip || req.socket?.remoteAddress || 'unknown'
+        );
+        log.create();
         res.status(403).send('Forbidden');
         return;
     }
@@ -117,7 +177,15 @@ export function moderatorOrAdmin(req: Request, res: Response, next: NextFunction
         AuthorizationService.requireRole(req, [UserRole.MODERATOR, UserRole.ADMIN]);
         next();
     } catch (error) {
-        console.error('Moderator authorization failed:', error);
+        // Log access denial
+        const log = new AccessDenialLog(
+            req.session?.user?.id || null,
+            req.session?.user?.username || null,
+            'Moderator authorization failed',
+            req.originalUrl,
+            req.ip || req.socket?.remoteAddress || 'unknown'
+        );
+        log.create();
         res.status(403).send('Forbidden');
         return;
     }

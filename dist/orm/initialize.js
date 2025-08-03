@@ -50,6 +50,7 @@ const passwordResetService_1 = require("../services/passwordResetService");
 const userManagementLog_1 = __importDefault(require("./userManagementLog"));
 const reauthenticationService_1 = require("../services/reauthenticationService");
 const loginTrackingService_1 = require("../services/loginTrackingService");
+const accessDenialLog_1 = __importDefault(require("./accessDenialLog"));
 // Initialize the database with a schema and sample data
 // Run once on system startup
 function initialize() {
@@ -86,6 +87,7 @@ function initialize() {
         yield userManagementLog_1.default.initializeTable();
         yield reauthenticationService_1.ReauthenticationService.initializeReauthTable();
         yield loginTrackingService_1.LoginTrackingService.initializeTable();
+        yield accessDenialLog_1.default.initializeTable();
         // Populate the database with sample data using secure password hashing
         const max = yield user_1.default.createUser('max', 'Maximuth1', 'Max LOLL', 'admin');
         const malcolm = yield user_1.default.createUser('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');
