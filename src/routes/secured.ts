@@ -61,7 +61,7 @@ route.get('/home', async (req, res) => {
     } else {
         posts = await req.session.user?.findFriendPosts();
     }
-    res.render('home', { ...req.session, view: 'home', posts });
+    res.render('home', { ...req.session, view: 'home', posts, user: req.session.user });
 });
 
 
@@ -69,13 +69,13 @@ route.get('/home', async (req, res) => {
 route.get('/friend_list', async (req, res) => {
     const friends = await req.session.user?.findFriends();
     const notFriends = await req.session.user?.findNotFriends();
-    res.render('friend_list', { ...req.session, view: 'friend_list', friends, notFriends});
+    res.render('friend_list', { ...req.session, view: 'friend_list', friends, notFriends, user: req.session.user });
 });
 
 // Show a list of posts by the current user
 route.get('/posts_me', async (req, res) => {
     const posts = await req.session.user?.findPosts();
-    res.render('posts_me', { ...req.session, view: 'posts_me', posts});
+    res.render('posts_me', { ...req.session, view: 'posts_me', posts, user: req.session.user});
 });
 
 // Create a new post and redirect back to the back parameter
@@ -97,7 +97,7 @@ route.get('/friend_add', async (req, res) => {
     // If found, then add the new relationship/connection
     if (friend && req.session.user)
         new Friend(req.session.user, friend).create();
-    res.render('friend_add', { ...req.session, view: 'friend_add', friend});
+    res.render('friend_add', { ...req.session, view: 'friend_add', friend, user: req.session.user});
 });
 
 // Show change password form
@@ -106,7 +106,7 @@ route.get('/change-password', (req, res) => {
         return res.redirect(303, '/');
     }
     const passwordRequirements = getPasswordRequirements();
-    res.render('change_password', { view: 'change_password', messages: [], passwordRequirements });
+    res.render('change_password', { view: 'change_password', messages: [], passwordRequirements, user: req.session.user });
 });
 
 // Handle change password submission
@@ -135,7 +135,7 @@ route.post('/change-password', async (req, res) => {
             messages.push('Password changed successfully.');
         }
     }
-    res.render('change_password', { view: 'change_password', messages, passwordRequirements });
+    res.render('change_password', { view: 'change_password', messages, passwordRequirements, user: req.session.user });
 });
 
 // Delete a post by ID (moderator/admin only)

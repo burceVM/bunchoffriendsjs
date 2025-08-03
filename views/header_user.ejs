@@ -10,9 +10,10 @@
         <li><a class="<%= view.match('friend_list') ? 'current' : 'other' %>" href="friend_list">Friends</a></li>
         <li><a class="<%= view.match('posts_me') ? 'current' : 'other' %>" href="posts_me">Just Your Messages</a></li>
         
-        <% if (user.role === 'moderator' || user.role === 'admin') { %>
+        <% if (user && (user.role === 'moderator' || user.role === 'admin')) { %>
             <li><a class="<%= view.match('manage_users') ? 'current' : 'other' %>" href="manage-users">Manage Users</a></li>
         <% } %>
+
 
         <li><a class="<%= view.match('change_password') ? 'current' : 'other' %>" href="change-password">Change Password</a></li>
         <li><a class="<%= view.match('logout') ? 'current' : 'other' %>" href="logout">Logout</a></li>

@@ -72,20 +72,20 @@ route.get('/home', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     else {
         posts = yield ((_c = req.session.user) === null || _c === void 0 ? void 0 : _c.findFriendPosts());
     }
-    res.render('home', Object.assign(Object.assign({}, req.session), { view: 'home', posts }));
+    res.render('home', Object.assign(Object.assign({}, req.session), { view: 'home', posts, user: req.session.user }));
 }));
 // Show a list of current friends and people who are not yet friends
 route.get('/friend_list', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _d, _e;
     const friends = yield ((_d = req.session.user) === null || _d === void 0 ? void 0 : _d.findFriends());
     const notFriends = yield ((_e = req.session.user) === null || _e === void 0 ? void 0 : _e.findNotFriends());
-    res.render('friend_list', Object.assign(Object.assign({}, req.session), { view: 'friend_list', friends, notFriends }));
+    res.render('friend_list', Object.assign(Object.assign({}, req.session), { view: 'friend_list', friends, notFriends, user: req.session.user }));
 }));
 // Show a list of posts by the current user
 route.get('/posts_me', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _f;
     const posts = yield ((_f = req.session.user) === null || _f === void 0 ? void 0 : _f.findPosts());
-    res.render('posts_me', Object.assign(Object.assign({}, req.session), { view: 'posts_me', posts }));
+    res.render('posts_me', Object.assign(Object.assign({}, req.session), { view: 'posts_me', posts, user: req.session.user }));
 }));
 // Create a new post and redirect back to the back parameter
 // Note: the back parameter can be used for invalidated redirects
@@ -105,7 +105,7 @@ route.get('/friend_add', (req, res) => __awaiter(void 0, void 0, void 0, functio
     // If found, then add the new relationship/connection
     if (friend && req.session.user)
         new orm_1.Friend(req.session.user, friend).create();
-    res.render('friend_add', Object.assign(Object.assign({}, req.session), { view: 'friend_add', friend }));
+    res.render('friend_add', Object.assign(Object.assign({}, req.session), { view: 'friend_add', friend, user: req.session.user }));
 }));
 // Show change password form
 route.get('/change-password', (req, res) => {
@@ -113,7 +113,7 @@ route.get('/change-password', (req, res) => {
         return res.redirect(303, '/');
     }
     const passwordRequirements = passwordSecurity_1.getPasswordRequirements();
-    res.render('change_password', { view: 'change_password', messages: [], passwordRequirements });
+    res.render('change_password', { view: 'change_password', messages: [], passwordRequirements, user: req.session.user });
 });
 // Handle change password submission
 route.post('/change-password', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -143,7 +143,7 @@ route.post('/change-password', (req, res) => __awaiter(void 0, void 0, void 0, f
             messages.push('Password changed successfully.');
         }
     }
-    res.render('change_password', { view: 'change_password', messages, passwordRequirements });
+    res.render('change_password', { view: 'change_password', messages, passwordRequirements, user: req.session.user });
 }));
 // Delete a post by ID (moderator/admin only)
 route.post('/delete-post/:id', auth_1.allowRoles('moderator', 'admin'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
