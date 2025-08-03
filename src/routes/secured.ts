@@ -10,7 +10,7 @@
 
 import Router from 'express-promise-router';
 import { User, Post, Friend } from '../orm';
-// import { allowRoles } from '../middleware/auth';
+import { allowRoles } from '../middleware/auth';
 const route = Router();
 
 //--------------------------------------------------------
@@ -101,6 +101,15 @@ route.post('/change-password', async (req, res) => {
         messages.push('Password changed successfully.');
     }
     res.render('change_password', { view: 'change_password', messages });
+});
+
+// Delete a post by ID (moderator/admin only)
+route.post('/delete-post/:id', allowRoles('moderator', 'admin'), async (req, res) => {
+    const postId = Number(req.params.id);
+    if (!isNaN(postId)) {
+        await Post.deleteById(postId);
+    }
+    res.redirect(303, '/home');
 });
 
 export default route;

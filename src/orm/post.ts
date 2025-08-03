@@ -108,4 +108,7 @@ export default class Post {
             this.likes = result[1].likes;
     }
 
+    static async deleteById(id: number): Promise<void> {
+        await alasql.promise(`DELETE FROM posts WHERE id = ${id}`);
+    }
 }

@@ -1,34 +1,38 @@
 <%- include('header_user') %>
 <div class="content">
+
+    <!-- New post form -->
     <form action="post" method="POST">
         <input type="hidden" name="back" value="home">
         <div class="status">
             <p>Welcome, <%- user.fullName %></p>
-            <p>How are you feeling? <input type="text" name="message"><input type="submit" value="Post"></p>
-        </div>
-        <div class="content">
-            <%
-                if (posts.length > 0) {
-                %>
-                <p>Messages:</p>
-                <%
-                    for (let post of posts) {
-                        %>
-                            <p>
-                                <b><%- post.message %></b><br/>
-                                <i>Posted by: <%- post.creator.fullName %> on <%- post.formattedDate %></i><br/>
-                                <%- post.likes %> Likes <% 
-                                    if (post.creator.id != user.id) {
-                                        %>
-                                            (<a href="like?post=<%- post.id %>&back=home">Like</a>)
-                                        <%
-                                    }
-                                %>
-                            </p>
-                        <%
-                    }
-                }
-            %>
+            <p>How are you feeling? 
+                <input type="text" name="message">
+                <input type="submit" value="Post">
+            </p>
         </div>
     </form>
+
+    <!-- Posts list -->
+    <div class="content">
+        <% if (posts.length > 0) { %>
+            <p>Messages:</p>
+            <% for (let post of posts) { %>
+                <div class="post">
+                    <b><%- post.message %></b><br/>
+                    <i>Posted by: <%- post.creator.fullName %> on <%- post.formattedDate %></i><br/>
+                    <%- post.likes %> Likes
+                    <% if (post.creator.id != user.id) { %>
+                        (<a href="like?post=<%- post.id %>&back=home">Like</a>)
+                    <% } %>
+
+                    <% if (user.role === 'moderator' || user.role === 'admin') { %>
+                        <form action="/delete-post/<%- post.id %>" method="POST" style="display:inline;">
+                            <button type="submit">Delete</button>
+                        </form>
+                    <% } %>
+                </div>
+            <% } %>
+        <% } %>
+    </div>
 </div>

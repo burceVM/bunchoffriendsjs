@@ -53,6 +53,11 @@ h1 {
     padding: 1em;
 }
 
+.post {
+    padding: 10px 0;
+    border-bottom: 1px solid #ccc;
+}
+
 pre {
     white-space: pre-wrap;
 }

@@ -102,6 +102,11 @@ class Post {
                 this.likes = result[1].likes;
         });
     }
+    static deleteById(id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield alasql_1.default.promise(`DELETE FROM posts WHERE id = ${id}`);
+        });
+    }
 }
 exports.default = Post;
 //# sourceMappingURL=post.js.map

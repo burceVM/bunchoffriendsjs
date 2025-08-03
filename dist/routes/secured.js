@@ -23,7 +23,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_promise_router_1 = __importDefault(require("express-promise-router"));
 const orm_1 = require("../orm");
-// import { allowRoles } from '../middleware/auth';
+const auth_1 = require("../middleware/auth");
 const route = express_promise_router_1.default();
 //--------------------------------------------------------
 // Routes that may only be used by logged in users
@@ -110,6 +110,14 @@ route.post('/change-password', (req, res) => __awaiter(void 0, void 0, void 0, f
         messages.push('Password changed successfully.');
     }
     res.render('change_password', { view: 'change_password', messages });
+}));
+// Delete a post by ID (moderator/admin only)
+route.post('/delete-post/:id', auth_1.allowRoles('moderator', 'admin'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const postId = Number(req.params.id);
+    if (!isNaN(postId)) {
+        yield orm_1.Post.deleteById(postId);
+    }
+    res.redirect(303, '/home');
 }));
 exports.default = route;
 //# sourceMappingURL=secured.js.map
