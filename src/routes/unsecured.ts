@@ -11,6 +11,7 @@
 import Router from 'express-promise-router';
 import { User, Post, raw } from '../orm';
 import { requireAuth, allowRoles } from '../middleware/auth';
+import { getLockoutStatistics } from '../utils/accountLockout';
 const route = Router();
 
 //--------------------------------------------------------
@@ -250,6 +251,26 @@ route.post('/admin', allowRoles('admin'), async (req, res) => {
         console.error('Admin route error:', error);
         res.status(500).send('Internal Server Error');
         return;
+    }
+});
+
+// Show account lockout statistics - admin only
+route.get('/admin/lockout-stats', allowRoles('admin'), async (req, res) => {
+    try {
+        const hoursBack = Number(req.query.hours) || 24;
+        const stats = await getLockoutStatistics(hoursBack);
+        
+        res.json({
+            success: true,
+            timeframe: `${hoursBack} hours`,
+            statistics: stats
+        });
+    } catch (error) {
+        console.error('Error retrieving lockout statistics:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve lockout statistics'
+        });
     }
 });
 

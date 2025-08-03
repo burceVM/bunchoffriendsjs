@@ -86,3 +86,116 @@ pre {
   font-size: 12px;
   color: #666;
 }
+
+/* Admin Panel Styles */
+.admin-section {
+  margin: 20px 0;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.admin-section h2 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 2px solid #000066;
+  padding-bottom: 5px;
+}
+
+.admin-section h3 {
+  color: #000066;
+  margin-bottom: 10px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.stat-item {
+  padding: 10px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  text-align: center;
+}
+
+.top-failed {
+  margin: 15px 0;
+  padding: 10px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+.top-failed ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.top-failed li {
+  margin: 5px 0;
+  font-family: monospace;
+}
+
+.reset-lockout {
+  margin: 20px 0;
+}
+
+.reset-lockout form {
+  margin: 10px 0;
+}
+
+.reset-lockout label {
+  display: block;
+  margin: 10px 0;
+}
+
+.reset-lockout input[type="text"] {
+  padding: 5px;
+  margin-left: 10px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  width: 200px;
+}
+
+.reset-lockout button {
+  padding: 8px 15px;
+  background-color: #000066;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.reset-lockout button:hover {
+  background-color: #000088;
+}
+
+.query-results {
+  margin: 15px 0;
+  max-height: 400px;
+  overflow: auto;
+}
+
+.error {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 10px;
+  border-radius: 3px;
+  margin: 10px 0;
+}
+
+.success {
+  color: #155724;
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  padding: 10px;
+  border-radius: 3px;
+  margin: 10px 0;
+}

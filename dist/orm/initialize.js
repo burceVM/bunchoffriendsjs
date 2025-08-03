@@ -25,6 +25,7 @@ const alasql_1 = __importDefault(require("alasql"));
 const user_1 = __importDefault(require("./user"));
 const friend_1 = __importDefault(require("./friend"));
 const post_1 = __importDefault(require("./post"));
+const accountLockout_1 = require("../utils/accountLockout");
 // Initialize the database with a schema and sample data
 // Run once on system startup
 function initialize() {
@@ -114,6 +115,8 @@ function initialize() {
         yield new post_1.default(marcia, 'I could listen to Davy Jones all night', new Date('2020-1-7 20:19:00'), 0).create();
         yield new post_1.default(jan, 'Feeling low', new Date('2020-1-8 09:15:00'), 0).create();
         yield new post_1.default(cindy, 'I have just heard an amazing secret', new Date('2020-1-11 13:11:00'), 0).create();
+        // Initialize login attempt tracking for account lockout functionality
+        yield accountLockout_1.initializeLoginTracking();
     });
 }
 exports.default = initialize;

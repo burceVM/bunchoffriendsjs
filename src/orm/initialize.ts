@@ -12,6 +12,7 @@ import alasql from 'alasql';
 import User from './user';
 import Friend from './friend';
 import Post from './post';
+import { initializeLoginTracking } from '../utils/accountLockout';
 
 // Initialize the database with a schema and sample data
 // Run once on system startup
@@ -110,4 +111,7 @@ export default async function initialize(): Promise<void> {
     await new Post(marcia, 'I could listen to Davy Jones all night', new Date('2020-1-7 20:19:00'), 0).create();
     await new Post(jan, 'Feeling low', new Date('2020-1-8 09:15:00'), 0).create();
     await new Post(cindy, 'I have just heard an amazing secret', new Date('2020-1-11 13:11:00'), 0).create();
+    
+    // Initialize login attempt tracking for account lockout functionality
+    await initializeLoginTracking();
 }

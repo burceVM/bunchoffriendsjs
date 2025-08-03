@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 /**
  * Client-side password validation for immediate user feedback
  * Mirrors server-side validation requirements
@@ -66,33 +67,8 @@ function validatePassword(password) {
         errors.push('Password must contain at least one number (0-9)');
     }
     
-    if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~`]/.test(password)) {
+    if (!/[!@#$%^&*()_+\-=[\]{}|;:,.<>?~`]/.test(password)) {
         errors.push('Password must contain at least one special character');
-    }
-    
-    // Common weak passwords
-    const blockedPasswords = [
-        'password', 'password123', '12345678', 'qwerty123',
-        'letmein', 'welcome123', 'admin123', 'user1234',
-        'changeme', 'temporary', 'newpassword', 'secret123'
-    ];
-    
-    const lowerPassword = password.toLowerCase();
-    for (const blocked of blockedPasswords) {
-        if (lowerPassword.includes(blocked)) {
-            errors.push('Password contains common words or patterns that are not allowed');
-            break;
-        }
-    }
-    
-    // Sequential characters
-    if (/123|234|345|456|567|678|789|890|abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz/i.test(password)) {
-        errors.push('Password should not contain sequential characters or common patterns');
-    }
-    
-    // Repeated characters
-    if (/(.)\1{2,}/.test(password)) {
-        errors.push('Password should not contain more than 2 consecutive identical characters');
     }
     
     return {
@@ -105,7 +81,6 @@ function validatePassword(password) {
  * Real-time password validation with visual feedback
  */
 function validatePasswordRealTime(password, container) {
-    const validation = validatePassword(password);
     
     if (!password) {
         container.innerHTML = '';
@@ -120,9 +95,7 @@ function validatePasswordRealTime(password, container) {
         { test: /[A-Z]/.test(password), text: 'One uppercase letter' },
         { test: /[a-z]/.test(password), text: 'One lowercase letter' },
         { test: /\d/.test(password), text: 'One number' },
-        { test: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~`]/.test(password), text: 'One special character' },
-        { test: !(/123|234|345|456|567|678|789|890|abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz/i.test(password)), text: 'No sequential patterns' },
-        { test: !(/(.)\1{2,}/.test(password)), text: 'No repeated characters' }
+        { test: /[!@#$%^&*()_+\-=[\]{}|;:,.<>?~`]/.test(password), text: 'One special character' }
     ];
     
     const ul = document.createElement('ul');

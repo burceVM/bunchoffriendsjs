@@ -24,6 +24,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_promise_router_1 = __importDefault(require("express-promise-router"));
 const orm_1 = require("../orm");
 const auth_1 = require("../middleware/auth");
+const accountLockout_1 = require("../utils/accountLockout");
 const route = express_promise_router_1.default();
 //--------------------------------------------------------
 // Routes that require authentication
@@ -239,6 +240,25 @@ route.post('/admin', auth_1.allowRoles('admin'), (req, res) => __awaiter(void 0,
         console.error('Admin route error:', error);
         res.status(500).send('Internal Server Error');
         return;
+    }
+}));
+// Show account lockout statistics - admin only
+route.get('/admin/lockout-stats', auth_1.allowRoles('admin'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const hoursBack = Number(req.query.hours) || 24;
+        const stats = yield accountLockout_1.getLockoutStatistics(hoursBack);
+        res.json({
+            success: true,
+            timeframe: `${hoursBack} hours`,
+            statistics: stats
+        });
+    }
+    catch (error) {
+        console.error('Error retrieving lockout statistics:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve lockout statistics'
+        });
     }
 }));
 exports.default = route;

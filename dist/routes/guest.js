@@ -24,6 +24,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_promise_router_1 = __importDefault(require("express-promise-router"));
 const orm_1 = require("../orm");
 const passwordSecurity_1 = require("../utils/passwordSecurity");
+const accountLockout_1 = require("../utils/accountLockout");
 // Standardized authentication error message to prevent username enumeration
 const AUTH_ERROR_MESSAGE = 'Invalid username and/or password';
 const GENERIC_ERROR_MESSAGE = 'Authentication failed. Please try again.';
@@ -37,25 +38,49 @@ route.get('/', (_req, res) => {
 });
 // Handle the login data posted from the home page 
 // Usernames are case insensitive
+// Implements account lockout to prevent brute force attacks
 route.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     try {
         // Fail securely: validate input parameters
         const username = String(req.body.username || '').toLowerCase().trim();
         const password = String(req.body.password || '');
+        const ipAddress = req.ip || ((_a = req.socket) === null || _a === void 0 ? void 0 : _a.remoteAddress) || 'unknown';
         // Fail securely: validate input length and format
         if (!username || username.length === 0 || username.length > 50) {
+            // Record failed attempt even for invalid input to prevent enumeration
+            yield accountLockout_1.recordLoginAttempt(username || 'invalid', false, ipAddress);
             res.render('index', { view: 'index', messages: [AUTH_ERROR_MESSAGE] });
             return;
         }
         if (!password || password.length === 0 || password.length > 200) {
+            yield accountLockout_1.recordLoginAttempt(username, false, ipAddress);
             res.render('index', { view: 'index', messages: [AUTH_ERROR_MESSAGE] });
+            return;
+        }
+        // Check account lockout status BEFORE attempting authentication
+        const lockoutStatus = yield accountLockout_1.getLockoutStatus(username);
+        if (lockoutStatus.isLocked) {
+            // Account is currently locked - record attempt and show lockout message
+            yield accountLockout_1.recordLoginAttempt(username, false, ipAddress);
+            const lockoutPolicy = accountLockout_1.getLockoutPolicy();
+            const remainingMinutes = lockoutStatus.remainingLockoutMinutes || lockoutPolicy.lockoutDurationMinutes;
+            res.render('index', {
+                view: 'index',
+                messages: [
+                    'Account temporarily locked due to multiple failed login attempts. ' +
+                        `Please try again in ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''}.`
+                ]
+            });
             return;
         }
         // Fail securely: ensure session is properly initialized
         if (!req.session || typeof req.session !== 'object') {
+            yield accountLockout_1.recordLoginAttempt(username, false, ipAddress);
             res.render('index', { view: 'index', messages: [GENERIC_ERROR_MESSAGE] });
             return;
         }
+        // Attempt authentication
         const user = yield orm_1.User.byLogin(username, password);
         // Fail securely: validate user object structure before storing in session
         if (user != null &&
@@ -65,17 +90,44 @@ route.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* (
             typeof user.role === 'string' &&
             user.id > 0 &&
             user.username.length > 0) {
+            // Successful login - record success and clear any lockout
+            yield accountLockout_1.recordLoginAttempt(username, true, ipAddress);
             req.session.user = user;
             res.redirect(303, 'home');
         }
         else {
-            // Fail securely: same error message for invalid credentials and invalid user data
-            res.render('index', { view: 'index', messages: [AUTH_ERROR_MESSAGE] });
+            // Failed authentication - record failed attempt
+            yield accountLockout_1.recordLoginAttempt(username, false, ipAddress);
+            // Check if this failure triggers a lockout
+            const newLockoutStatus = yield accountLockout_1.getLockoutStatus(username);
+            if (newLockoutStatus.isLocked && !lockoutStatus.isLocked) {
+                // Account just became locked
+                const lockoutPolicy = accountLockout_1.getLockoutPolicy();
+                res.render('index', {
+                    view: 'index',
+                    messages: [
+                        `Too many failed login attempts. Account temporarily locked for ${lockoutPolicy.lockoutDurationMinutes} minutes.`
+                    ]
+                });
+            }
+            else {
+                // Regular failed attempt - use standardized error message
+                res.render('index', { view: 'index', messages: [AUTH_ERROR_MESSAGE] });
+            }
         }
     }
     catch (error) {
         // Fail securely: any error in login process denies access
         console.error('Login error:', error);
+        // Still try to record the attempt if possible
+        try {
+            const username = String(req.body.username || '').toLowerCase().trim();
+            const ipAddress = req.ip || ((_b = req.socket) === null || _b === void 0 ? void 0 : _b.remoteAddress) || 'unknown';
+            yield accountLockout_1.recordLoginAttempt(username || 'error', false, ipAddress);
+        }
+        catch (recordError) {
+            console.error('Failed to record login attempt during error:', recordError);
+        }
         res.render('index', { view: 'index', messages: [GENERIC_ERROR_MESSAGE] });
         return;
     }

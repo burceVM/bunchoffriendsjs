@@ -1,50 +1,126 @@
 <%- include('header_guest') %>
 <div class="content">
-    <p>Query (users, friends, posts):</p>
-    <form action="admin" method="POST">
-        <p><textarea name="query"><%= locals.query ? locals.query : '' %></textarea></p>
-        <p><input type="submit" value="Run"/></p>
-        <%
-            if (locals.errors) {
-                %>
-                    <pre><%= locals.errors %></pre>
-                <%
-            }
-            if (locals.rows) {
-                if (locals.rows.length > 0) {
+    <h1>Admin Panel</h1>
+    
+    <!-- Account Lockout Management Section -->
+    <div class="admin-section">
+        <h2>Account Lockout Management</h2>
+        
+        <div class="lockout-stats">
+            <h3>Lockout Statistics (Read-Only)</h3>
+            <div id="lockout-stats-display">
+                <button onclick="loadLockoutStats()">Load Statistics</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Query Section -->
+    <div class="admin-section">
+        <h2>Database Query Interface</h2>
+        <p>Query (users, friends, posts, login_attempts):</p>
+        <form action="admin" method="POST">
+            <p><textarea name="query" rows="5" cols="80"><%= locals.query ? locals.query : '' %></textarea></p>
+            <p><input type="submit" value="Run Query"/></p>
+            <%
+                if (locals.errors) {
                     %>
-                        <table>
-                            <%
-                                let index = 0;
-                                for (let row of locals.rows) {
-                                    %>
-                                        <tr>
-                                            <%
-                                                for (let column of row) {
-                                                    if (index == 0) {
-                                                        %>
-                                                            <th><%- column %></th>
-                                                        <%
-                                                    } else {
-                                                        %>
-                                                            <td><%- column %></td>
-                                                        <%
-                                                    }
-                                                }
-                                            %>
-                                        </tr>
-                                    <%
-                                    index++;
-                                }
-                            %>
-                        </table>
-                    <%
-                } else {
-                    %>
-                        <p>No rows returned.</p>
+                        <div class="error">
+                            <h4>Errors:</h4>
+                            <pre><%= locals.errors %></pre>
+                        </div>
                     <%
                 }
-            }
-        %>
-    </form>
+                if (locals.rows) {
+                    if (locals.rows.length > 0) {
+                        %>
+                            <div class="query-results">
+                                <h4>Query Results:</h4>
+                                <table border="1" style="border-collapse: collapse;">
+                                    <%
+                                        let index = 0;
+                                        for (let row of locals.rows) {
+                                            %>
+                                                <tr>
+                                                    <%
+                                                        for (let column of row) {
+                                                            if (index == 0) {
+                                                                %>
+                                                                    <th style="padding: 5px; background-color: #f0f0f0;"><%- column %></th>
+                                                                <%
+                                                            } else {
+                                                                %>
+                                                                    <td style="padding: 5px;"><%- column %></td>
+                                                                <%
+                                                            }
+                                                        }
+                                                    %>
+                                                </tr>
+                                            <%
+                                            index++;
+                                        }
+                                    %>
+                                </table>
+                            </div>
+                        <%
+                    } else {
+                        %>
+                            <p>No rows returned.</p>
+                        <%
+                    }
+                }
+            %>
+        </form>
+    </div>
 </div>
+
+<script>
+async function loadLockoutStats(hours = 24) {
+    try {
+        const response = await fetch(`/admin/lockout-stats?hours=${hours}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const stats = data.statistics;
+            const display = document.getElementById('lockout-stats-display');
+            display.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <strong>Total Login Attempts:</strong> ${stats.totalAttempts}
+                    </div>
+                    <div class="stat-item">
+                        <strong>Failed Attempts:</strong> ${stats.failedAttempts}
+                    </div>
+                    <div class="stat-item">
+                        <strong>Successful Attempts:</strong> ${stats.successfulAttempts}
+                    </div>
+                    <div class="stat-item">
+                        <strong>Users Currently Locked:</strong> ${stats.uniqueUsersLocked}
+                    </div>
+                </div>
+                ${stats.topFailedUsernames.length > 0 ? `
+                    <div class="top-failed">
+                        <h4>Top Failed Login Attempts:</h4>
+                        <ul>
+                            ${stats.topFailedUsernames.map(u => `<li>${u.username}: ${u.attempts} attempts</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                <button onclick="loadLockoutStats(24)">Last 24 Hours</button>
+                <button onclick="loadLockoutStats(168)">Last 7 Days</button>
+                <p><em>Admin has read-only access to lockout information. Lockouts will automatically expire after the configured time periods.</em></p>
+            `;
+        } else {
+            document.getElementById('lockout-stats-display').innerHTML = 
+                `<div class="error">Error: ${data.error}</div>`;
+        }
+    } catch (error) {
+        document.getElementById('lockout-stats-display').innerHTML = 
+            `<div class="error">Failed to load statistics: ${error.message}</div>`;
+    }
+}
+
+// Load initial statistics
+document.addEventListener('DOMContentLoaded', function() {
+    loadLockoutStats();
+});
+</script>
