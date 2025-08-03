@@ -47,6 +47,7 @@ route.post('/signup', async (req, res) => {
     const username = String(req.body.username || '').toLowerCase();
     const password = String(req.body.password || '');
     const fullName = String(req.body.fullName || '');
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
 
     const messages = [];
 
@@ -56,6 +57,9 @@ route.post('/signup', async (req, res) => {
         messages.push('Password cannot be empty');
     if (fullName.length == 0)
         messages.push('Full name cannot be empty');
+    if (!passwordRegex.test(password))
+        messages.push('Password must be at least 8 characters long, contain at least one uppercase letter and one number');
+
 
     try {
         // Are there any validation errors?

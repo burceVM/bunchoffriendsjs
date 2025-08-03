@@ -70,6 +70,13 @@ export default class User {
         }
     }
 
+    // Change the password for this user
+    async changePassword(newPassword: string) {
+        // Update password in AlaSQL
+        await alasql('UPDATE users SET password = ? WHERE username = ?', [newPassword, this.username]);
+        this.password = newPassword;
+    }
+
     // Find all friends of this user
     // (i.e., users that this user has connected to)
     findFriends(): Promise<User[]> {

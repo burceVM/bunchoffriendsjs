@@ -7,7 +7,7 @@
     "bunchoffriends": "bin/bunchoffriends.js"
   },
   "scripts": {
-    "start": "bin/bunchoffriends.js",
+    "start": "npm run build && node bin/bunchoffriends.js",
     "watch": "tsc -w",
     "build": "tsc"
   },

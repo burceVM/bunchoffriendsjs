@@ -75,5 +75,33 @@ route.get('/friend_add', (req, res) => __awaiter(void 0, void 0, void 0, functio
         new orm_1.Friend(req.session.user, friend).create();
     res.render('friend_add', Object.assign(Object.assign({}, req.session), { view: 'friend_add', friend }));
 }));
+// Show change password form
+route.get('/change-password', (req, res) => {
+    if (!req.session.user) {
+        return res.redirect(303, '/');
+    }
+    res.render('change_password', { view: 'change_password', messages: [] });
+});
+// Handle change password submission
+route.post('/change-password', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!req.session.user) {
+        return res.redirect(303, '/');
+    }
+    const { oldPassword, newPassword } = req.body;
+    const username = req.session.user.username;
+    const user = yield orm_1.User.byLogin(username, oldPassword);
+    const messages = [];
+    if (!user) {
+        messages.push('Current password is incorrect.');
+    }
+    else if (!newPassword || newPassword.length === 0) {
+        messages.push('New password cannot be empty.');
+    }
+    else {
+        yield user.changePassword(newPassword);
+        messages.push('Password changed successfully.');
+    }
+    res.render('change_password', { view: 'change_password', messages });
+}));
 exports.default = route;
 //# sourceMappingURL=secured.js.map

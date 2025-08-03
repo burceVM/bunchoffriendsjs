@@ -82,6 +82,14 @@ class User {
             }
         });
     }
+    // Change the password for this user
+    changePassword(newPassword) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Update password in AlaSQL
+            yield alasql_1.default('UPDATE users SET password = ? WHERE username = ?', [newPassword, this.username]);
+            this.password = newPassword;
+        });
+    }
     // Find all friends of this user
     // (i.e., users that this user has connected to)
     findFriends() {
