@@ -88,10 +88,13 @@ app.use(manage_users_1.default);
 // Handle any uncaught errors from the application
 app.use((err, req, res, next) => {
     if (err) {
-        res.status(500).render('error', Object.assign(Object.assign({}, req.session), { view: 'error', error: err.toString() }));
+        // Use generic error message for unexpected errors
+        const errorMessage = 'An unexpected error occurred. Please try again later.';
+        res.status(500).render('error', Object.assign(Object.assign({}, req.session), { view: 'error', error: errorMessage }));
     }
-    else
+    else {
         next();
+    }
 });
 // Start the server
 function start() {

@@ -61,7 +61,7 @@ function allowRoles(...allowedRoles) {
             // Log access denial
             const log = new accessDenialLog_1.default(((_b = (_a = req.session) === null || _a === void 0 ? void 0 : _a.user) === null || _b === void 0 ? void 0 : _b.id) || null, ((_d = (_c = req.session) === null || _c === void 0 ? void 0 : _c.user) === null || _d === void 0 ? void 0 : _d.username) || null, `Role authorization failed: ${error instanceof Error ? error.message : String(error)}`, req.originalUrl, req.ip || ((_e = req.socket) === null || _e === void 0 ? void 0 : _e.remoteAddress) || 'unknown');
             log.create();
-            res.status(403).send('Forbidden');
+            res.status(403).render('error', Object.assign(Object.assign({}, req.session), { view: 'error', error: 'You do not have permission to access this page.' }));
             return;
         }
     };
@@ -81,7 +81,7 @@ function requirePermission(permission) {
             // Log access denial
             const log = new accessDenialLog_1.default(((_b = (_a = req.session) === null || _a === void 0 ? void 0 : _a.user) === null || _b === void 0 ? void 0 : _b.id) || null, ((_d = (_c = req.session) === null || _c === void 0 ? void 0 : _c.user) === null || _d === void 0 ? void 0 : _d.username) || null, `Permission denied: ${permission}`, req.originalUrl, req.ip || ((_e = req.socket) === null || _e === void 0 ? void 0 : _e.remoteAddress) || 'unknown');
             log.create();
-            res.status(403).send('Forbidden');
+            res.status(403).render('error', Object.assign(Object.assign({}, req.session), { view: 'error', error: 'You do not have permission to access this page.' }));
             return;
         }
     };
@@ -99,7 +99,7 @@ function requireResourceAccess(getResourceOwnerId) {
                 // Log access denial
                 const log = new accessDenialLog_1.default(((_b = (_a = req.session) === null || _a === void 0 ? void 0 : _a.user) === null || _b === void 0 ? void 0 : _b.id) || null, ((_d = (_c = req.session) === null || _c === void 0 ? void 0 : _c.user) === null || _d === void 0 ? void 0 : _d.username) || null, 'Resource access denied', req.originalUrl, req.ip || ((_e = req.socket) === null || _e === void 0 ? void 0 : _e.remoteAddress) || 'unknown');
                 log.create();
-                res.status(403).send('Forbidden');
+                res.status(403).render('error', Object.assign(Object.assign({}, req.session), { view: 'error', error: 'You do not have permission to access this page.' }));
                 return;
             }
             next();
@@ -108,7 +108,7 @@ function requireResourceAccess(getResourceOwnerId) {
             // Log access denial
             const log = new accessDenialLog_1.default(((_g = (_f = req.session) === null || _f === void 0 ? void 0 : _f.user) === null || _g === void 0 ? void 0 : _g.id) || null, ((_j = (_h = req.session) === null || _h === void 0 ? void 0 : _h.user) === null || _j === void 0 ? void 0 : _j.username) || null, 'Exception in resource access check', req.originalUrl, req.ip || ((_k = req.socket) === null || _k === void 0 ? void 0 : _k.remoteAddress) || 'unknown');
             log.create();
-            res.status(403).send('Forbidden');
+            res.status(403).render('error', Object.assign(Object.assign({}, req.session), { view: 'error', error: 'You do not have permission to access this page.' }));
             return;
         }
     };
@@ -127,7 +127,7 @@ function adminOnly(req, res, next) {
         // Log access denial
         const log = new accessDenialLog_1.default(((_b = (_a = req.session) === null || _a === void 0 ? void 0 : _a.user) === null || _b === void 0 ? void 0 : _b.id) || null, ((_d = (_c = req.session) === null || _c === void 0 ? void 0 : _c.user) === null || _d === void 0 ? void 0 : _d.username) || null, 'Admin authorization failed', req.originalUrl, req.ip || ((_e = req.socket) === null || _e === void 0 ? void 0 : _e.remoteAddress) || 'unknown');
         log.create();
-        res.status(403).send('Forbidden');
+        res.status(403).render('error', Object.assign(Object.assign({}, req.session), { view: 'error', error: 'You do not have permission to access this page.' }));
         return;
     }
 }
@@ -145,7 +145,7 @@ function moderatorOrAdmin(req, res, next) {
         // Log access denial
         const log = new accessDenialLog_1.default(((_b = (_a = req.session) === null || _a === void 0 ? void 0 : _a.user) === null || _b === void 0 ? void 0 : _b.id) || null, ((_d = (_c = req.session) === null || _c === void 0 ? void 0 : _c.user) === null || _d === void 0 ? void 0 : _d.username) || null, 'Moderator authorization failed', req.originalUrl, req.ip || ((_e = req.socket) === null || _e === void 0 ? void 0 : _e.remoteAddress) || 'unknown');
         log.create();
-        res.status(403).send('Forbidden');
+        res.status(403).render('error', Object.assign(Object.assign({}, req.session), { view: 'error', error: 'You do not have permission to access this page.' }));
         return;
     }
 }

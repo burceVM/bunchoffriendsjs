@@ -87,9 +87,16 @@ app.use(manageUsers);
 // Handle any uncaught errors from the application
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (err) {
-        res.status(500).render('error', { ...req.session, view: 'error', error: err.toString()});
-    } else
+        // Use generic error message for unexpected errors
+        const errorMessage = 'An unexpected error occurred. Please try again later.';
+        res.status(500).render('error', { 
+            ...req.session, 
+            view: 'error', 
+            error: errorMessage 
+        });
+    } else {
         next();
+    }
 });
 
 // Start the server

@@ -80,7 +80,11 @@ export function allowRoles(...allowedRoles: string[]): (req: Request, res: Respo
                 req.ip || req.socket?.remoteAddress || 'unknown'
             );
             log.create();
-            res.status(403).send('Forbidden');
+            res.status(403).render('error', {
+                ...req.session,
+                view: 'error',
+                error: 'You do not have permission to access this page.'
+            });
             return;
         }
     };
@@ -104,7 +108,11 @@ export function requirePermission(permission: Permission): (req: Request, res: R
                 req.ip || req.socket?.remoteAddress || 'unknown'
             );
             log.create();
-            res.status(403).send('Forbidden');
+            res.status(403).render('error', {
+                ...req.session,
+                view: 'error',
+                error: 'You do not have permission to access this page.'
+            });
             return;
         }
     };
@@ -127,7 +135,11 @@ export function requireResourceAccess(getResourceOwnerId: (req: Request) => numb
                     req.ip || req.socket?.remoteAddress || 'unknown'
                 );
                 log.create();
-                res.status(403).send('Forbidden');
+                res.status(403).render('error', {
+                    ...req.session,
+                    view: 'error',
+                    error: 'You do not have permission to access this page.'
+                });
                 return;
             }
             next();
@@ -141,7 +153,11 @@ export function requireResourceAccess(getResourceOwnerId: (req: Request) => numb
                 req.ip || req.socket?.remoteAddress || 'unknown'
             );
             log.create();
-            res.status(403).send('Forbidden');
+            res.status(403).render('error', {
+                ...req.session,
+                view: 'error',
+                error: 'You do not have permission to access this page.'
+            });
             return;
         }
     };
@@ -164,7 +180,11 @@ export function adminOnly(req: Request, res: Response, next: NextFunction): void
             req.ip || req.socket?.remoteAddress || 'unknown'
         );
         log.create();
-        res.status(403).send('Forbidden');
+        res.status(403).render('error', {
+            ...req.session,
+            view: 'error',
+            error: 'You do not have permission to access this page.'
+        });
         return;
     }
 }
@@ -186,7 +206,11 @@ export function moderatorOrAdmin(req: Request, res: Response, next: NextFunction
             req.ip || req.socket?.remoteAddress || 'unknown'
         );
         log.create();
-        res.status(403).send('Forbidden');
+        res.status(403).render('error', {
+            ...req.session,
+            view: 'error',
+            error: 'You do not have permission to access this page.'
+        });
         return;
     }
 }
