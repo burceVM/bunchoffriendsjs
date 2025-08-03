@@ -23,6 +23,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_promise_router_1 = __importDefault(require("express-promise-router"));
 const orm_1 = require("../orm");
+// import { allowRoles } from '../middleware/auth';
 const route = express_promise_router_1.default();
 //--------------------------------------------------------
 // Routes that may only be used by logged in users
@@ -37,22 +38,29 @@ route.use((req, res, next) => {
 });
 // Render the home page
 // Includes a list of posts by friends
+// If the user is a moderator or admin, show all posts
 route.get('/home', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    const posts = yield ((_a = req.session.user) === null || _a === void 0 ? void 0 : _a.findFriendPosts());
+    var _a, _b, _c;
+    let posts;
+    if (((_a = req.session.user) === null || _a === void 0 ? void 0 : _a.role) === 'moderator' || ((_b = req.session.user) === null || _b === void 0 ? void 0 : _b.role) === 'admin') {
+        posts = yield orm_1.Post.byWhere('1=1', 'creationDate desc'); // all posts
+    }
+    else {
+        posts = yield ((_c = req.session.user) === null || _c === void 0 ? void 0 : _c.findFriendPosts());
+    }
     res.render('home', Object.assign(Object.assign({}, req.session), { view: 'home', posts }));
 }));
 // Show a list of current friends and people who are not yet friends
 route.get('/friend_list', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _b, _c;
-    const friends = yield ((_b = req.session.user) === null || _b === void 0 ? void 0 : _b.findFriends());
-    const notFriends = yield ((_c = req.session.user) === null || _c === void 0 ? void 0 : _c.findNotFriends());
+    var _d, _e;
+    const friends = yield ((_d = req.session.user) === null || _d === void 0 ? void 0 : _d.findFriends());
+    const notFriends = yield ((_e = req.session.user) === null || _e === void 0 ? void 0 : _e.findNotFriends());
     res.render('friend_list', Object.assign(Object.assign({}, req.session), { view: 'friend_list', friends, notFriends }));
 }));
 // Show a list of posts by the current user
 route.get('/posts_me', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _d;
-    const posts = yield ((_d = req.session.user) === null || _d === void 0 ? void 0 : _d.findPosts());
+    var _f;
+    const posts = yield ((_f = req.session.user) === null || _f === void 0 ? void 0 : _f.findPosts());
     res.render('posts_me', Object.assign(Object.assign({}, req.session), { view: 'posts_me', posts }));
 }));
 // Create a new post and redirect back to the back parameter

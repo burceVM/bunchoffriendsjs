@@ -45,6 +45,10 @@ export default async function initialize(): Promise<void> {
     );
 
     // Populate the database with sample data
+    const max = new User('max', 'Maximuth1', 'Max LOLL', 'admin');
+
+    const malcolm = new User('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');
+
     const carol = new User('carol', 'password', 'Carol', 'normie');
     const mike = new User('mike', 'qwerty', 'Mike', 'normie');
     const alice = new User('alice', '123456', 'Alice', 'normie');
@@ -56,6 +60,10 @@ export default async function initialize(): Promise<void> {
     const jan = new User('jan', 'glass', 'Jan', 'normie');
     const cindy = new User('cindy', 'thindy', 'Cindy', 'normie');
     
+    await max.create();
+
+    await malcolm.create();
+
     await carol.create();
     await mike.create();
     await alice.create();

@@ -55,6 +55,8 @@ function initialize() {
             constraint creator_fk foreign key (creator) references users(id)
         )`);
         // Populate the database with sample data
+        const max = new user_1.default('max', 'Maximuth1', 'Max LOLL', 'admin');
+        const malcolm = new user_1.default('malcolm', 'Malcolm1', 'Malcolm Todd', 'moderator');
         const carol = new user_1.default('carol', 'password', 'Carol', 'normie');
         const mike = new user_1.default('mike', 'qwerty', 'Mike', 'normie');
         const alice = new user_1.default('alice', '123456', 'Alice', 'normie');
@@ -65,6 +67,8 @@ function initialize() {
         const marcia = new user_1.default('marcia', 'davyjones', 'Marcia', 'normie');
         const jan = new user_1.default('jan', 'glass', 'Jan', 'normie');
         const cindy = new user_1.default('cindy', 'thindy', 'Cindy', 'normie');
+        yield max.create();
+        yield malcolm.create();
         yield carol.create();
         yield mike.create();
         yield alice.create();

@@ -10,6 +10,7 @@
 
 import Router from 'express-promise-router';
 import { User, Post, Friend } from '../orm';
+// import { allowRoles } from '../middleware/auth';
 const route = Router();
 
 //--------------------------------------------------------
@@ -27,10 +28,17 @@ route.use((req, res, next) => {
 
 // Render the home page
 // Includes a list of posts by friends
+// If the user is a moderator or admin, show all posts
 route.get('/home', async (req, res) => {
-    const posts = await req.session.user?.findFriendPosts();
-    res.render('home', { ...req.session, view: 'home', posts});
+    let posts;
+    if (req.session.user?.role === 'moderator' || req.session.user?.role === 'admin') {
+        posts = await Post.byWhere('1=1', 'creationDate desc'); // all posts
+    } else {
+        posts = await req.session.user?.findFriendPosts();
+    }
+    res.render('home', { ...req.session, view: 'home', posts });
 });
+
 
 // Show a list of current friends and people who are not yet friends
 route.get('/friend_list', async (req, res) => {
