@@ -34,7 +34,8 @@ function initialize() {
             id serial primary key not null autoincrement,
             username text unique,
             password text,
-            fullName text
+            fullName text,
+            role text
         );
         
         create table friends(
@@ -54,16 +55,16 @@ function initialize() {
             constraint creator_fk foreign key (creator) references users(id)
         )`);
         // Populate the database with sample data
-        const carol = new user_1.default('carol', 'password', 'Carol');
-        const mike = new user_1.default('mike', 'qwerty', 'Mike');
-        const alice = new user_1.default('alice', '123456', 'Alice');
-        const sam = new user_1.default('sam', 'iloveyou', 'Sam');
-        const greg = new user_1.default('greg', 'bravo', 'Greg');
-        const peter = new user_1.default('peter', 'volcano', 'Peter');
-        const bobby = new user_1.default('bobby', 'racecar', 'Bobby');
-        const marcia = new user_1.default('marcia', 'davyjones', 'Marcia');
-        const jan = new user_1.default('jan', 'glass', 'Jan');
-        const cindy = new user_1.default('cindy', 'thindy', 'Cindy');
+        const carol = new user_1.default('carol', 'password', 'Carol', 'normie');
+        const mike = new user_1.default('mike', 'qwerty', 'Mike', 'normie');
+        const alice = new user_1.default('alice', '123456', 'Alice', 'normie');
+        const sam = new user_1.default('sam', 'iloveyou', 'Sam', 'normie');
+        const greg = new user_1.default('greg', 'bravo', 'Greg', 'normie');
+        const peter = new user_1.default('peter', 'volcano', 'Peter', 'normie');
+        const bobby = new user_1.default('bobby', 'racecar', 'Bobby', 'normie');
+        const marcia = new user_1.default('marcia', 'davyjones', 'Marcia', 'normie');
+        const jan = new user_1.default('jan', 'glass', 'Jan', 'normie');
+        const cindy = new user_1.default('cindy', 'thindy', 'Cindy', 'normie');
         yield carol.create();
         yield mike.create();
         yield alice.create();

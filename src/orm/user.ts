@@ -18,6 +18,7 @@ export default class User {
         public username: string, // Login name
         public password: string, // Unhashed password
         public fullName: string, // Display name for the user interface
+        public role: string, // Role of the user (e.g., 'user', 'admin')
         public id?: number) {    // Unique identifier for the user
     }
 
@@ -47,12 +48,12 @@ export default class User {
     // Find all users matching the supplied SQL 'where' clause
     static async byWhere(where: string, order?: string): Promise<User[]> {
         const rows = await alasql.promise(
-            `select id, username, password, fullName
+            `select id, username, password, fullName, role
              from users
              where ${where}
              ` + (order ? `order by ${order}` : '')
         );
-        return (rows as any[]).map(row => new User(row.username, row.password, row.fullName, row.id));
+        return (rows as any[]).map(row => new User(row.username, row.password, row.fullName, row.role, row.id));
     }
 
     // Create a new user in the database
@@ -60,8 +61,8 @@ export default class User {
     async create(): Promise<void> {
         try {
             await alasql.promise(
-                `insert into users (username, password, fullName) 
-                 values ('${this.username}', '${this.password}', '${this.fullName}')`
+                `insert into users (username, password, fullName, role) 
+                values ('${this.username}', '${this.password}', '${this.fullName}', '${this.role}')`
             );
             // Retrive the identifier of the new row
             this.id = alasql.autoval('users', 'id');

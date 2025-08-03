@@ -70,7 +70,7 @@ route.post('/signup', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         // Are there any validation errors?
         if (messages.length == 0) {
             // No errors - so create the new user
-            yield new orm_1.User(username, password, fullName).create();
+            yield new orm_1.User(username, password, fullName, "normie").create();
             return res.render('signup_success', { view: 'signup_success' });
         }
     }

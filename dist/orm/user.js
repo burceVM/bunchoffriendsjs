@@ -28,10 +28,12 @@ class User {
     constructor(username, // Login name
     password, // Unhashed password
     fullName, // Display name for the user interface
+    role, // Role of the user (e.g., 'user', 'admin')
     id) {
         this.username = username;
         this.password = password;
         this.fullName = fullName;
+        this.role = role;
         this.id = id;
     }
     // Find the unique user with a matching id
@@ -60,11 +62,11 @@ class User {
     // Find all users matching the supplied SQL 'where' clause
     static byWhere(where, order) {
         return __awaiter(this, void 0, void 0, function* () {
-            const rows = yield alasql_1.default.promise(`select id, username, password, fullName
+            const rows = yield alasql_1.default.promise(`select id, username, password, fullName, role
              from users
              where ${where}
              ` + (order ? `order by ${order}` : ''));
-            return rows.map(row => new User(row.username, row.password, row.fullName, row.id));
+            return rows.map(row => new User(row.username, row.password, row.fullName, row.role, row.id));
         });
     }
     // Create a new user in the database
@@ -72,8 +74,8 @@ class User {
     create() {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                yield alasql_1.default.promise(`insert into users (username, password, fullName) 
-                 values ('${this.username}', '${this.password}', '${this.fullName}')`);
+                yield alasql_1.default.promise(`insert into users (username, password, fullName, role) 
+                values ('${this.username}', '${this.password}', '${this.fullName}', '${this.role}')`);
                 // Retrive the identifier of the new row
                 this.id = alasql_1.default.autoval('users', 'id');
             }

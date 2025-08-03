@@ -22,7 +22,8 @@ export default async function initialize(): Promise<void> {
             id serial primary key not null autoincrement,
             username text unique,
             password text,
-            fullName text
+            fullName text,
+            role text
         );
         
         create table friends(
@@ -44,16 +45,16 @@ export default async function initialize(): Promise<void> {
     );
 
     // Populate the database with sample data
-    const carol = new User('carol', 'password', 'Carol');
-    const mike = new User('mike', 'qwerty', 'Mike');
-    const alice = new User('alice', '123456', 'Alice');
-    const sam = new User('sam', 'iloveyou', 'Sam');
-    const greg = new User('greg', 'bravo', 'Greg');
-    const peter = new User('peter', 'volcano', 'Peter');
-    const bobby = new User('bobby', 'racecar', 'Bobby');
-    const marcia = new User('marcia', 'davyjones', 'Marcia');
-    const jan = new User('jan', 'glass', 'Jan');
-    const cindy = new User('cindy', 'thindy', 'Cindy');
+    const carol = new User('carol', 'password', 'Carol', 'normie');
+    const mike = new User('mike', 'qwerty', 'Mike', 'normie');
+    const alice = new User('alice', '123456', 'Alice', 'normie');
+    const sam = new User('sam', 'iloveyou', 'Sam', 'normie');
+    const greg = new User('greg', 'bravo', 'Greg', 'normie');
+    const peter = new User('peter', 'volcano', 'Peter', 'normie');
+    const bobby = new User('bobby', 'racecar', 'Bobby', 'normie');
+    const marcia = new User('marcia', 'davyjones', 'Marcia', 'normie');
+    const jan = new User('jan', 'glass', 'Jan', 'normie');
+    const cindy = new User('cindy', 'thindy', 'Cindy', 'normie');
     
     await carol.create();
     await mike.create();

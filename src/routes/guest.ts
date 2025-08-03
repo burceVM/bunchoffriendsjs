@@ -65,7 +65,7 @@ route.post('/signup', async (req, res) => {
         // Are there any validation errors?
         if (messages.length == 0) {
             // No errors - so create the new user
-            await new User(username, password, fullName).create();
+            await new User(username, password, fullName, "normie").create();
             return res.render('signup_success', { view: 'signup_success' });
         }
     } catch (e) {
