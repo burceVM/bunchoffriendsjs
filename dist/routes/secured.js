@@ -24,6 +24,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_promise_router_1 = __importDefault(require("express-promise-router"));
 const orm_1 = require("../orm");
 const auth_1 = require("../middleware/auth");
+const passwordSecurity_1 = require("../utils/passwordSecurity");
+// Standardized authentication error message to prevent information disclosure
+// const AUTH_ERROR_MESSAGE = 'Invalid username and/or password';
 const route = express_promise_router_1.default();
 //--------------------------------------------------------
 // Routes that may only be used by logged in users
@@ -109,7 +112,8 @@ route.get('/change-password', (req, res) => {
     if (!req.session.user) {
         return res.redirect(303, '/');
     }
-    res.render('change_password', { view: 'change_password', messages: [] });
+    const passwordRequirements = passwordSecurity_1.getPasswordRequirements();
+    res.render('change_password', { view: 'change_password', messages: [], passwordRequirements });
 });
 // Handle change password submission
 route.post('/change-password', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -120,17 +124,26 @@ route.post('/change-password', (req, res) => __awaiter(void 0, void 0, void 0, f
     const username = req.session.user.username;
     const user = yield orm_1.User.byLogin(username, oldPassword);
     const messages = [];
+    const passwordRequirements = passwordSecurity_1.getPasswordRequirements();
     if (!user) {
-        messages.push('Current password is incorrect.');
+        // Use standardized error message to prevent information disclosure
+        messages.push('Invalid old password.');
     }
     else if (!newPassword || newPassword.length === 0) {
         messages.push('New password cannot be empty.');
     }
     else {
-        yield user.changePassword(newPassword);
-        messages.push('Password changed successfully.');
+        // Comprehensive password validation
+        const passwordValidation = passwordSecurity_1.validatePasswordStrength(newPassword);
+        if (!passwordValidation.isValid) {
+            messages.push(...passwordValidation.errors);
+        }
+        else {
+            yield user.changePassword(newPassword);
+            messages.push('Password changed successfully.');
+        }
     }
-    res.render('change_password', { view: 'change_password', messages });
+    res.render('change_password', { view: 'change_password', messages, passwordRequirements });
 }));
 // Delete a post by ID (moderator/admin only)
 route.post('/delete-post/:id', auth_1.allowRoles('moderator', 'admin'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {

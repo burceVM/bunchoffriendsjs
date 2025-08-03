@@ -16,7 +16,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validatePasswordStrength = exports.needsRehashing = exports.verifyPassword = exports.hashPassword = void 0;
+exports.validatePasswordComplexity = exports.validatePasswordStrength = exports.getPasswordRequirements = exports.needsRehashing = exports.verifyPassword = exports.hashPassword = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 /**
  * Configuration for password hashing security
@@ -100,23 +100,68 @@ function needsRehashing(storedHash) {
 }
 exports.needsRehashing = needsRehashing;
 /**
- * Validate password strength before hashing
+ * Get current password requirements configuration
+ * Aligned with major social media platforms (8+ characters, mixed complexity)
+ */
+function getPasswordRequirements() {
+    return {
+        minLength: 8,
+        maxLength: 128,
+        requireUppercase: true,
+        requireLowercase: true,
+        requireNumbers: true,
+        requireSpecialChars: true,
+        allowedSpecialChars: '!@#$%^&*()_+-=[]{}|;:,.<>?~`'
+    };
+}
+exports.getPasswordRequirements = getPasswordRequirements;
+/**
+ * Validate password strength against social media platform standards
  * @param password - The password to validate
- * @returns boolean - True if password meets security requirements
+ * @returns { isValid: boolean, errors: string[] } - Validation result with specific errors
  */
 function validatePasswordStrength(password) {
+    const errors = [];
     if (!password || typeof password !== 'string') {
-        return false;
+        return { isValid: false, errors: ['Password is required'] };
     }
-    // Password strength requirements
-    const minLength = 8;
-    const hasUppercase = /[A-Z]/.test(password);
-    const hasLowercase = /[a-z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    return password.length >= minLength &&
-        hasUppercase &&
-        hasLowercase &&
-        hasNumber;
+    const requirements = getPasswordRequirements();
+    // Length validation
+    if (password.length < requirements.minLength) {
+        errors.push(`Password must be at least ${requirements.minLength} characters long`);
+    }
+    if (password.length > requirements.maxLength) {
+        errors.push(`Password must not exceed ${requirements.maxLength} characters`);
+    }
+    // Character type requirements
+    if (requirements.requireUppercase && !/[A-Z]/.test(password)) {
+        errors.push('Password must contain at least one uppercase letter (A-Z)');
+    }
+    if (requirements.requireLowercase && !/[a-z]/.test(password)) {
+        errors.push('Password must contain at least one lowercase letter (a-z)');
+    }
+    if (requirements.requireNumbers && !/\d/.test(password)) {
+        errors.push('Password must contain at least one number (0-9)');
+    }
+    if (requirements.requireSpecialChars) {
+        const specialCharRegex = new RegExp(`[${requirements.allowedSpecialChars.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}]`);
+        if (!specialCharRegex.test(password)) {
+            errors.push(`Password must contain at least one special character (${requirements.allowedSpecialChars})`);
+        }
+    }
+    return {
+        isValid: errors.length === 0,
+        errors: errors
+    };
 }
 exports.validatePasswordStrength = validatePasswordStrength;
+/**
+ * Legacy function for backward compatibility - returns boolean
+ * @param password - The password to validate
+ * @returns boolean - True if password meets all requirements
+ */
+function validatePasswordComplexity(password) {
+    return validatePasswordStrength(password).isValid;
+}
+exports.validatePasswordComplexity = validatePasswordComplexity;
 //# sourceMappingURL=passwordSecurity.js.map

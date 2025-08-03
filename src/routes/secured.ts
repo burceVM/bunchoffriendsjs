@@ -11,6 +11,11 @@
 import Router from 'express-promise-router';
 import { User, Post, Friend } from '../orm';
 import { allowRoles } from '../middleware/auth';
+import { validatePasswordStrength, getPasswordRequirements } from '../utils/passwordSecurity';
+
+// Standardized authentication error message to prevent information disclosure
+// const AUTH_ERROR_MESSAGE = 'Invalid username and/or password';
+
 const route = Router();
 
 //--------------------------------------------------------
@@ -100,7 +105,8 @@ route.get('/change-password', (req, res) => {
     if (!req.session.user) {
         return res.redirect(303, '/');
     }
-    res.render('change_password', { view: 'change_password', messages: [] });
+    const passwordRequirements = getPasswordRequirements();
+    res.render('change_password', { view: 'change_password', messages: [], passwordRequirements });
 });
 
 // Handle change password submission
@@ -112,15 +118,24 @@ route.post('/change-password', async (req, res) => {
     const username = req.session.user.username;
     const user = await User.byLogin(username, oldPassword);
     const messages = [];
+    const passwordRequirements = getPasswordRequirements();
+    
     if (!user) {
-        messages.push('Current password is incorrect.');
+        // Use standardized error message to prevent information disclosure
+        messages.push('Invalid old password.');
     } else if (!newPassword || newPassword.length === 0) {
         messages.push('New password cannot be empty.');
     } else {
-        await user.changePassword(newPassword);
-        messages.push('Password changed successfully.');
+        // Comprehensive password validation
+        const passwordValidation = validatePasswordStrength(newPassword);
+        if (!passwordValidation.isValid) {
+            messages.push(...passwordValidation.errors);
+        } else {
+            await user.changePassword(newPassword);
+            messages.push('Password changed successfully.');
+        }
     }
-    res.render('change_password', { view: 'change_password', messages });
+    res.render('change_password', { view: 'change_password', messages, passwordRequirements });
 });
 
 // Delete a post by ID (moderator/admin only)

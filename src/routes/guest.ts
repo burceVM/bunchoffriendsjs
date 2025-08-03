@@ -10,7 +10,12 @@
 
 import Router from 'express-promise-router';
 import { User } from '../orm';
-import { validatePasswordStrength } from '../utils/passwordSecurity';
+import { validatePasswordStrength, getPasswordRequirements } from '../utils/passwordSecurity';
+
+// Standardized authentication error message to prevent username enumeration
+const AUTH_ERROR_MESSAGE = 'Invalid username and/or password';
+const GENERIC_ERROR_MESSAGE = 'Authentication failed. Please try again.';
+
 const route = Router();
 
 //--------------------------------------------------------
@@ -32,18 +37,18 @@ route.post('/login', async (req, res) => {
 
         // Fail securely: validate input length and format
         if (!username || username.length === 0 || username.length > 50) {
-            res.render('index', { view: 'index', messages: ['Invalid username or password']});
+            res.render('index', { view: 'index', messages: [AUTH_ERROR_MESSAGE]});
             return;
         }
 
         if (!password || password.length === 0 || password.length > 200) {
-            res.render('index', { view: 'index', messages: ['Invalid username or password']});
+            res.render('index', { view: 'index', messages: [AUTH_ERROR_MESSAGE]});
             return;
         }
 
         // Fail securely: ensure session is properly initialized
         if (!req.session || typeof req.session !== 'object') {
-            res.render('index', { view: 'index', messages: ['Session error. Please try again.']});
+            res.render('index', { view: 'index', messages: [GENERIC_ERROR_MESSAGE]});
             return;
         }
 
@@ -62,19 +67,20 @@ route.post('/login', async (req, res) => {
             res.redirect(303, 'home');
         } else {
             // Fail securely: same error message for invalid credentials and invalid user data
-            res.render('index', { view: 'index', messages: ['Invalid username or password']});
+            res.render('index', { view: 'index', messages: [AUTH_ERROR_MESSAGE]});
         }
     } catch (error) {
         // Fail securely: any error in login process denies access
         console.error('Login error:', error);
-        res.render('index', { view: 'index', messages: ['Login failed. Please try again.']});
+        res.render('index', { view: 'index', messages: [GENERIC_ERROR_MESSAGE]});
         return;
     }
 });
 
 // Form for signing up for a new account
 route.get('/signup', (_req, res) => {
-    res.render('signup', { view: 'signup' });
+    const passwordRequirements = getPasswordRequirements();
+    res.render('signup', { view: 'signup', passwordRequirements });
 });
 
 // Create a new account
@@ -87,6 +93,7 @@ route.post('/signup', async (req, res) => {
     const fullName = String(req.body.fullName || '');
 
     const messages = [];
+    const passwordRequirements = getPasswordRequirements();
 
     if (username.length == 0)
         messages.push('Username cannot be empty');
@@ -94,9 +101,12 @@ route.post('/signup', async (req, res) => {
         messages.push('Password cannot be empty');
     if (fullName.length == 0)
         messages.push('Full name cannot be empty');
-    if (!validatePasswordStrength(password))
-        messages.push('Password must be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, and one number');
 
+    // Comprehensive password validation
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
+        messages.push(...passwordValidation.errors);
+    }
 
     try {
         // Are there any validation errors?
@@ -106,9 +116,11 @@ route.post('/signup', async (req, res) => {
             return res.render('signup_success', { view: 'signup_success' });
         }
     } catch (e) {
-        messages.push((e as Error)?.message || 'An error occurred');
+        // Don't reveal specific error details that might indicate username availability
+        console.error('User creation error:', e);
+        messages.push('Account creation failed. Please try again or choose a different username.');
     }
-    res.render('signup', { view: 'signup', username, password, fullName, messages });
+    res.render('signup', { view: 'signup', username, password, fullName, messages, passwordRequirements });
 });
 
 // Remove the currently logged in user from the session
