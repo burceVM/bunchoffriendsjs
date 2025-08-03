@@ -30,6 +30,7 @@ const orm_1 = require("./orm");
 const guest_1 = __importDefault(require("./routes/guest"));
 const unsecured_1 = __importDefault(require("./routes/unsecured"));
 const secured_1 = __importDefault(require("./routes/secured"));
+const manage_users_1 = __importDefault(require("./routes/manage_users"));
 const process_1 = require("process");
 const app = express_1.default();
 let port = 3000;
@@ -83,6 +84,7 @@ app.use(express_1.default.static(path_1.default.join(__dirname, '../static')));
 app.use(guest_1.default);
 app.use(unsecured_1.default);
 app.use(secured_1.default);
+app.use(manage_users_1.default);
 // Handle any uncaught errors from the application
 app.use((err, req, res, next) => {
     if (err) {

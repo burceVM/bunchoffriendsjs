@@ -1,0 +1,32 @@
+<%- include('header_user') %>
+<div class="content">
+    <h2>Manage Users</h2>
+    <% if (users.length > 0) { %>
+        <ul>
+            <% users.forEach(u => { %>
+                <li>
+                    <%= u.fullName %> (<%= u.role %>)
+                    
+                    <!-- Delete button -->
+                    <form action="/delete-user/<%= u.id %>" method="POST" style="display:inline;">
+                        <button type="submit">Delete</button>
+                    </form>
+
+                    <!-- Role change form (admin only) -->
+                    <% if (user.role === 'admin') { %>
+                        <form action="/change-role/<%= u.id %>" method="POST" style="display:inline;">
+                            <select name="role">
+                                <option value="normie" <%= u.role === 'normie' ? 'selected' : '' %>>Normie</option>
+                                <option value="moderator" <%= u.role === 'moderator' ? 'selected' : '' %>>Moderator</option>
+                                <option value="admin" <%= u.role === 'admin' ? 'selected' : '' %>>Admin</option>
+                            </select>
+                            <button type="submit">Update Role</button>
+                        </form>
+                    <% } %>
+                </li>
+            <% }) %>
+        </ul>
+    <% } else { %>
+        <p>No users found.</p>
+    <% } %>
+</div>

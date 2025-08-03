@@ -17,6 +17,7 @@ import { initialize } from './orm';
 import guest from './routes/guest';
 import unsecured from './routes/unsecured';
 import secured from './routes/secured';
+import manageUsers from './routes/manage_users';
 import { exit } from 'process';
 
 const app = express();
@@ -81,6 +82,7 @@ app.use(express.static(path.join(__dirname, '../static')));
 app.use(guest);
 app.use(unsecured);
 app.use(secured);
+app.use(manageUsers);
 
 // Handle any uncaught errors from the application
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
